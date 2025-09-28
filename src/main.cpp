@@ -1,5 +1,5 @@
 #include "configuration.h"
-#if !MESHTASTIC_EXCLUDE_GPS
+#if !GATEMESH_EXCLUDE_GPS
 #include "GPS.h"
 #endif
 #include "MeshRadio.h"
@@ -22,7 +22,7 @@
 #include "error.h"
 #include "power.h"
 
-#if !MESHTASTIC_EXCLUDE_I2C
+#if !GATEMESH_EXCLUDE_I2C
 #include "detect/ScanI2CTwoWire.h"
 #include <Wire.h>
 #endif
@@ -44,10 +44,10 @@ PCA9557 io(0x18, &Wire);
 
 #ifdef ARCH_ESP32
 #include "freertosinc.h"
-#if !MESHTASTIC_EXCLUDE_WEBSERVER
+#if !GATEMESH_EXCLUDE_WEBSERVER
 #include "mesh/http/WebServer.h"
 #endif
-#if !MESHTASTIC_EXCLUDE_BLUETOOTH
+#if !GATEMESH_EXCLUDE_BLUETOOTH
 #include "nimble/NimbleBluetooth.h"
 NimbleBluetooth *nimbleBluetooth = nullptr;
 #endif
@@ -68,7 +68,7 @@ NRF52Bluetooth *nrf52Bluetooth = nullptr;
 #include "mesh/eth/ethClient.h"
 #endif
 
-#if !MESHTASTIC_EXCLUDE_MQTT
+#if !GATEMESH_EXCLUDE_MQTT
 #include "mqtt/MQTT.h"
 #endif
 
@@ -125,7 +125,7 @@ ButtonThread *CancelButtonThread = nullptr;
 #include "AmbientLightingThread.h"
 #include "PowerFSMThread.h"
 
-#if !defined(ARCH_STM32WL) && !MESHTASTIC_EXCLUDE_I2C
+#if !defined(ARCH_STM32WL) && !GATEMESH_EXCLUDE_I2C
 #include "motion/AccelerometerThread.h"
 AccelerometerThread *accelerometerThread = nullptr;
 #endif
@@ -153,7 +153,7 @@ UdpMulticastHandler *udpHandler = nullptr;
 float tcxoVoltage = SX126X_DIO3_TCXO_VOLTAGE; // if TCXO is optional, put this here so it can be changed further down.
 #endif
 
-#ifdef MESHTASTIC_INCLUDE_NICHE_GRAPHICS
+#ifdef GATEMESH_INCLUDE_NICHE_GRAPHICS
 void setupNicheGraphics();
 #include "nicheGraphics.h"
 #endif
@@ -220,7 +220,7 @@ bool pauseBluetoothLogging = false;
 
 bool pmu_found;
 
-#if !MESHTASTIC_EXCLUDE_I2C
+#if !GATEMESH_EXCLUDE_I2C
 // Array map of sensor types with i2c address and wire as we'll find in the i2c scan
 std::pair<uint8_t, TwoWire *> nodeTelemetrySensorsMap[_meshtastic_TelemetrySensorType_MAX + 1] = {};
 #endif
@@ -235,14 +235,14 @@ const char *getDeviceName()
 
     getMacAddr(dmac);
 
-    // Meshtastic_ab3c or Shortname_abcd
+    // GateMesh_ab3c or Shortname_abcd
     static char name[20];
     snprintf(name, sizeof(name), "%02x%02x", dmac[4], dmac[5]);
     // if the shortname exists and is NOT the new default of ab3c, use it for BLE name.
     if (strcmp(owner.short_name, name) != 0) {
         snprintf(name, sizeof(name), "%s_%02x%02x", owner.short_name, dmac[4], dmac[5]);
     } else {
-        snprintf(name, sizeof(name), "Meshtastic_%02x%02x", dmac[4], dmac[5]);
+        snprintf(name, sizeof(name), "GateMesh_%02x%02x", dmac[4], dmac[5]);
     }
     return name;
 }
@@ -427,7 +427,11 @@ void setup()
     powerMonInit();
     serialSinceMsec = millis();
 
-    LOG_INFO("\n\n//\\ E S H T /\\ S T / C\n");
+    LOG_INFO("\n\n"
+             "╔═══════════════════════════════════╗\n"
+             "║     GateMesh Gate Controller      ║\n"
+             "║     Professional Gate Automation  ║\n"
+             "╚═══════════════════════════════════╝\n");
 
     initDeepSleep();
 
@@ -517,7 +521,7 @@ void setup()
 
     fsInit();
 
-#if !MESHTASTIC_EXCLUDE_I2C
+#if !GATEMESH_EXCLUDE_I2C
 #if defined(I2C_SDA1) && defined(ARCH_RP2040)
     Wire1.setSDA(I2C_SDA1);
     Wire1.setSCL(I2C_SCL1);
@@ -574,7 +578,7 @@ void setup()
     powerStatus->observe(&power->newStatus);
     power->setup(); // Must be after status handler is installed, so that handler gets notified of the initial configuration
 
-#if !MESHTASTIC_EXCLUDE_I2C
+#if !GATEMESH_EXCLUDE_I2C
     // We need to scan here to decide if we have a screen for nodeDB.init() and because power has been applied to
     // accessories
     auto i2cScanner = std::unique_ptr<ScanI2CTwoWire>(new ScanI2CTwoWire());
@@ -823,7 +827,7 @@ void setup()
     screen_model = meshtastic_Config_DisplayConfig_OledType_OLED_SH1107; // keep dimension of 128x64
 #endif
 
-#if !MESHTASTIC_EXCLUDE_I2C
+#if !GATEMESH_EXCLUDE_I2C
 #if !defined(ARCH_STM32WL)
     if (acc_info.type != ScanI2C::DeviceType::NONE) {
         accelerometerThread = new AccelerometerThread(acc_info.type);
@@ -901,7 +905,7 @@ void setup()
 #endif // HAS_SCREEN
 
     // setup TZ prior to time actions.
-#if !MESHTASTIC_EXCLUDE_TZ
+#if !GATEMESH_EXCLUDE_TZ
     LOG_DEBUG("Use compiled/slipstreamed %s", slipstreamTZString); // important, removing this clobbers our magic string
     if (*config.device.tzdef && config.device.tzdef[0] != 0) {
         LOG_DEBUG("Saved TZ: %s ", config.device.tzdef);
@@ -920,7 +924,7 @@ void setup()
 
     readFromRTC(); // read the main CPU RTC at first (in case we can't get GPS time)
 
-#if !MESHTASTIC_EXCLUDE_GPS
+#if !GATEMESH_EXCLUDE_GPS
     // If we're taking on the repeater role, ignore GPS
 #ifdef SENSOR_GPS_CONFLICT
     if (sensor_detected == false) {
@@ -1134,7 +1138,7 @@ void setup()
 
 #endif
 
-#ifdef MESHTASTIC_INCLUDE_NICHE_GRAPHICS
+#ifdef GATEMESH_INCLUDE_NICHE_GRAPHICS
     // After modules are setup, so we can observe modules
     setupNicheGraphics();
 #endif
@@ -1151,7 +1155,7 @@ void setup()
         RECORD_CRITICALERROR(meshtastic_CriticalErrorCode_NO_AXP192); // Record a hardware fault for missing hardware
 #endif
 
-#if !MESHTASTIC_EXCLUDE_I2C
+#if !GATEMESH_EXCLUDE_I2C
 // Don't call screen setup until after nodedb is setup (because we need
 // the current region name)
 #if defined(ST7701_CS) || defined(ST7735_CS) || defined(USE_EINK) || defined(ILI9341_DRIVER) || defined(ILI9342_DRIVER) ||       \
@@ -1424,7 +1428,7 @@ void setup()
 
     lateInitVariant(); // Do board specific init (see extra_variants/README.md for documentation)
 
-#if !MESHTASTIC_EXCLUDE_MQTT
+#if !GATEMESH_EXCLUDE_MQTT
     mqttInit();
 #endif
 
@@ -1452,7 +1456,7 @@ void setup()
     osk_found = true;
 #endif
 
-#if defined(ARCH_ESP32) && !MESHTASTIC_EXCLUDE_WEBSERVER
+#if defined(ARCH_ESP32) && !GATEMESH_EXCLUDE_WEBSERVER
     // Start web server thread.
     webServerThread = new WebServerThread();
 #endif
@@ -1520,26 +1524,26 @@ extern meshtastic_DeviceMetadata getDeviceMetadata()
     deviceMetadata.hw_model = HW_VENDOR;
     deviceMetadata.hasRemoteHardware = moduleConfig.remote_hardware.enabled;
     deviceMetadata.excluded_modules = meshtastic_ExcludedModules_EXCLUDED_NONE;
-#if MESHTASTIC_EXCLUDE_REMOTEHARDWARE
+#if GATEMESH_EXCLUDE_REMOTEHARDWARE
     deviceMetadata.excluded_modules |= meshtastic_ExcludedModules_REMOTEHARDWARE_CONFIG;
 #endif
-#if MESHTASTIC_EXCLUDE_AUDIO
+#if GATEMESH_EXCLUDE_AUDIO
     deviceMetadata.excluded_modules |= meshtastic_ExcludedModules_AUDIO_CONFIG;
 #endif
 // Option to explicitly include canned messages for edge cases, e.g. niche graphics
-#if ((!HAS_SCREEN || NO_EXT_GPIO) || MESHTASTIC_EXCLUDE_CANNEDMESSAGES) && !defined(MESHTASTIC_INCLUDE_NICHE_GRAPHICS)
+#if ((!HAS_SCREEN || NO_EXT_GPIO) || GATEMESH_EXCLUDE_CANNEDMESSAGES) && !defined(GATEMESH_INCLUDE_NICHE_GRAPHICS)
     deviceMetadata.excluded_modules |= meshtastic_ExcludedModules_CANNEDMSG_CONFIG;
 #endif
-#if NO_EXT_GPIO || MESHTASTIC_EXCLUDE_EXTERNALNOTIFICATION
+#if NO_EXT_GPIO || GATEMESH_EXCLUDE_EXTERNALNOTIFICATION
     deviceMetadata.excluded_modules |= meshtastic_ExcludedModules_EXTNOTIF_CONFIG;
 #endif
 // Only edge case here is if we apply this a device with built in Accelerometer and want to detect interrupts
 // We'll have to macro guard against those targets potentially
-#if NO_EXT_GPIO || MESHTASTIC_EXCLUDE_DETECTIONSENSOR
+#if NO_EXT_GPIO || GATEMESH_EXCLUDE_DETECTIONSENSOR
     deviceMetadata.excluded_modules |= meshtastic_ExcludedModules_DETECTIONSENSOR_CONFIG;
 #endif
 // If we don't have any GPIO and we don't have GPS OR we don't want too - no purpose in having serial config
-#if NO_EXT_GPIO && NO_GPS || MESHTASTIC_EXCLUDE_SERIAL
+#if NO_EXT_GPIO && NO_GPS || GATEMESH_EXCLUDE_SERIAL
     deviceMetadata.excluded_modules |= meshtastic_ExcludedModules_SERIAL_CONFIG;
 #endif
 #ifndef ARCH_ESP32
@@ -1562,13 +1566,13 @@ extern meshtastic_DeviceMetadata getDeviceMetadata()
     deviceMetadata.excluded_modules |= meshtastic_ExcludedModules_NETWORK_CONFIG; // No network on RP2040
 #endif
 
-#if !(MESHTASTIC_EXCLUDE_PKI)
+#if !(GATEMESH_EXCLUDE_PKI)
     deviceMetadata.hasPKC = true;
 #endif
     return deviceMetadata;
 }
 
-#if !MESHTASTIC_EXCLUDE_I2C
+#if !GATEMESH_EXCLUDE_I2C
 void scannerToSensorsMap(const std::unique_ptr<ScanI2CTwoWire> &i2cScanner, ScanI2C::DeviceType deviceType,
                          meshtastic_TelemetrySensorType sensorType)
 {
@@ -1620,3 +1624,5 @@ void loop()
     }
 }
 #endif
+
+

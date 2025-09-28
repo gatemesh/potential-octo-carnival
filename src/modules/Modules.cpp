@@ -99,6 +99,7 @@
 #if !MESHTASTIC_EXCLUDE_RANGETEST && !MESHTASTIC_EXCLUDE_GPS
 #include "modules/RangeTestModule.h"
 #endif
+#include "modules/irrigation/IrrigationModule.h"
 #if !defined(CONFIG_IDF_TARGET_ESP32S2) && !MESHTASTIC_EXCLUDE_SERIAL
 #include "modules/SerialModule.h"
 #endif
@@ -299,7 +300,12 @@ void setupModules()
         if (moduleConfig.has_range_test && moduleConfig.range_test.enabled)
             new RangeTestModule();
 #endif
+        // Irrigation module
+        irrigationModule = new IrrigationModule();
     } else {
+#if !MESHTASTIC_EXCLUDE_ADMIN
+        adminModule = new AdminModule();
+#endif
 #if !MESHTASTIC_EXCLUDE_ADMIN
         adminModule = new AdminModule();
 #endif

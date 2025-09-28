@@ -41,3 +41,16 @@ src/mesh/raspihttp/private_key.pem
 
 # Ignore logo (set at build time with platformio-custom.py)
 data/boot/logo.*
+
+# Irrigation System Roadmap
+irrigation_roadmap.*
+IRRIGATION_ROADMAP.*
+
+# GateMesh Rebranding Guide
+gatemesh_rebranding.*
+GATEMESH_REBRANDING.*
+
+# GateMesh Irrigation Development Guide
+gatemesh_irrigation_development.*
+GATEMESH_IRRIGATION_DEVELOPMENT.*
+GateMesh_Field_Hierarchy_Structure.md

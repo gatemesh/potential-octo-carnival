@@ -5,6 +5,9 @@
 #include "Throttle.h"
 #include "configuration.h"
 #include "time.h"
+#include "modules/irrigation/IrrigationModule.h"
+
+extern IrrigationModule *irrigationModule;
 
 #if defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT
 #define IS_USB_SERIAL
@@ -85,6 +88,9 @@ int32_t SerialConsole::runOnce()
     }
 #endif
 
+    // Read and process text commands
+    readLine();
+
     int32_t delay = runOncePart();
 #if defined(SERIAL_HAS_ON_RECEIVE)
     return Port.available() ? delay : INT32_MAX;
@@ -144,4 +150,50 @@ void SerialConsole::log_to_serial(const char *logLevel, const char *format, va_l
         emitLogRecord(ll, thread ? thread->ThreadName.c_str() : "", format, arg);
     } else
         RedirectablePrint::log_to_serial(logLevel, format, arg);
+}
+
+void SerialConsole::readLine()
+{
+    while (Port.available() && lineBufferPos < sizeof(lineBuffer) - 1) {
+        char c = Port.read();
+        
+        if (c == '\n' || c == '\r') {
+            if (lineBufferPos > 0) {
+                lineBuffer[lineBufferPos] = '\0';
+                processTextCommand(lineBuffer);
+                lineBufferPos = 0;
+            }
+        } else {
+            lineBuffer[lineBufferPos++] = c;
+        }
+    }
+}
+
+void SerialConsole::processTextCommand(const char *cmd)
+{
+    // Skip empty commands
+    if (!cmd || strlen(cmd) == 0) return;
+    
+    // Skip commands that start with protobuf framing
+    if (cmd[0] == 0x94) return;
+    
+    // Trim leading/trailing whitespace
+    const char *start = cmd;
+    while (*start && isspace(*start)) start++;
+    
+    const char *end = start + strlen(start) - 1;
+    while (end > start && isspace(*end)) end--;
+    
+    char trimmedCmd[256];
+    size_t len = end - start + 1;
+    if (len >= sizeof(trimmedCmd)) len = sizeof(trimmedCmd) - 1;
+    memcpy(trimmedCmd, start, len);
+    trimmedCmd[len] = '\0';
+    
+    // Process commands
+    if (irrigationModule) {
+        irrigationModule->handleConsoleCommand(trimmedCmd);
+    } else {
+        consolePrintf("Command not recognized: %s\n", trimmedCmd);
+    }
 }

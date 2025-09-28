@@ -105,38 +105,42 @@ typedef enum _meshtastic_PortNum {
  Maintained by Charles Crossan (crossan007) : crossan007@gmail.com
  ENCODING: Protobuf */
     meshtastic_PortNum_TELEMETRY_APP = 67,
+    /* Irrigation control system for automated water management.
+ Payload is IrrigationCommand or IrrigationNodeInfo messages.
+ ENCODING: Protobuf */
+    meshtastic_PortNum_IRRIGATION_APP = 68,
     /* Experimental tools for estimating node position without a GPS
  Maintained by Github user a-f-G-U-C (a Meshtastic contributor)
  Project files at https://github.com/a-f-G-U-C/Meshtastic-ZPS
  ENCODING: arrays of int64 fields */
-    meshtastic_PortNum_ZPS_APP = 68,
+    meshtastic_PortNum_ZPS_APP = 69,
     /* Used to let multiple instances of Linux native applications communicate
  as if they did using their LoRa chip.
  Maintained by GitHub user GUVWAF.
  Project files at https://github.com/GUVWAF/Meshtasticator
  ENCODING: Protobuf (?) */
-    meshtastic_PortNum_SIMULATOR_APP = 69,
+    meshtastic_PortNum_SIMULATOR_APP = 70,
     /* Provides a traceroute functionality to show the route a packet towards
  a certain destination would take on the mesh. Contains a RouteDiscovery message as payload.
  ENCODING: Protobuf */
-    meshtastic_PortNum_TRACEROUTE_APP = 70,
+    meshtastic_PortNum_TRACEROUTE_APP = 71,
     /* Aggregates edge info for the network by sending out a list of each node's neighbors
  ENCODING: Protobuf */
-    meshtastic_PortNum_NEIGHBORINFO_APP = 71,
+    meshtastic_PortNum_NEIGHBORINFO_APP = 72,
     /* ATAK Plugin
  Portnum for payloads from the official Meshtastic ATAK plugin */
-    meshtastic_PortNum_ATAK_PLUGIN = 72,
+    meshtastic_PortNum_ATAK_PLUGIN = 73,
     /* Provides unencrypted information about a node for consumption by a map via MQTT */
-    meshtastic_PortNum_MAP_REPORT_APP = 73,
+    meshtastic_PortNum_MAP_REPORT_APP = 74,
     /* PowerStress based monitoring support (for automated power consumption testing) */
-    meshtastic_PortNum_POWERSTRESS_APP = 74,
+    meshtastic_PortNum_POWERSTRESS_APP = 75,
     /* Reticulum Network Stack Tunnel App
  ENCODING: Fragmented RNS Packet. Handled by Meshtastic RNS interface */
-    meshtastic_PortNum_RETICULUM_TUNNEL_APP = 76,
+    meshtastic_PortNum_RETICULUM_TUNNEL_APP = 77,
     /* App for transporting Cayenne Low Power Payload, popular for LoRaWAN sensor nodes. Offers ability to send
  arbitrary telemetry over meshtastic that is not covered by telemetry.proto
  ENCODING: CayenneLLP */
-    meshtastic_PortNum_CAYENNE_APP = 77,
+    meshtastic_PortNum_CAYENNE_APP = 78,
     /* Private applications should use portnums >= 256.
  To simplify initial development and testing you can use "PRIVATE_APP"
  in your code without needing to rebuild protobuf files (via [regen-protos.sh](https://github.com/meshtastic/firmware/blob/master/bin/regen-protos.sh)) */

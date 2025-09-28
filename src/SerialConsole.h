@@ -13,6 +13,9 @@ class SerialConsole : public StreamAPI, public RedirectablePrint, private concur
      */
     bool usingProtobufs = false;
 
+    char lineBuffer[256] = {0};
+    size_t lineBufferPos = 0;
+
   public:
     SerialConsole();
 
@@ -42,6 +45,10 @@ class SerialConsole : public StreamAPI, public RedirectablePrint, private concur
 
     /// Possibly switch to protobufs if we see a valid protobuf message
     virtual void log_to_serial(const char *logLevel, const char *format, va_list arg);
+
+  private:
+    void processTextCommand(const char *cmd);
+    void readLine();
 };
 
 // A simple wrapper to allow non class aware code write to the console
