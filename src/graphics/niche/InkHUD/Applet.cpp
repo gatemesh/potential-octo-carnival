@@ -837,7 +837,7 @@ void InkHUD::Applet::drawLogo(int16_t centerX, int16_t centerY, uint16_t width, 
     };
     typedef Point Distance;
 
-    int16_t logoTh = width * 0.068; // Thickness scales with width. Measured from logo at meshtastic.org.
+    int16_t logoTh = width * 0.068; // Thickness scales with width. Measured from logo at gatemesh.com.
     int16_t logoL = centerX - (width / 2) + (logoTh / 2);
     int16_t logoT = centerY - (height / 2) + (logoTh / 2);
     int16_t logoW = width - logoTh;

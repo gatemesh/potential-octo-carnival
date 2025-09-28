@@ -1,0 +1,121 @@
+// gatemesh-protobufs/meshtastic/gate_control.proto
+syntax = "proto3";
+package meshtastic;
+
+import "meshtastic/channel.proto";
+
+// Gate control messages
+message GateControl {
+  enum Command {
+    UNSET = 0;
+    OPEN = 1;
+    CLOSE = 2;
+    STOP = 3;
+    STATUS_REQUEST = 4;
+    LOCK = 5;
+    UNLOCK = 6;
+    CALIBRATE = 7;
+  }
+  
+  Command command = 1;
+  uint32 gate_id = 2;
+  bytes auth_token = 3;
+  
+  oneof variant {
+    GateStatus status = 4;
+    GateSchedule schedule = 5;
+    AccessControl access = 6;
+    GateConfig config = 7;
+  }
+}
+
+// Gate status report
+message GateStatus {
+  enum State {
+    UNKNOWN = 0;
+    CLOSED = 1;
+    OPENING = 2;
+    OPEN = 3;
+    CLOSING = 4;
+    ERROR = 5;
+    BLOCKED = 6;
+    LOCKED = 7;
+    OFFLINE = 8;
+  }
+  
+  uint32 gate_id = 1;
+  State state = 2;
+  uint32 position_percent = 3;
+  float battery_voltage = 4;
+  int32 temperature_c = 5;
+  uint32 cycle_count = 6;
+  uint32 error_code = 7;
+  string error_message = 8;
+  uint64 last_opened = 9;
+  uint64 last_closed = 10;
+  bool manual_override = 11;
+  int32 motor_current_ma = 12;
+}
+
+// Access control
+message AccessControl {
+  message User {
+    uint32 node_id = 1;
+    string name = 2;
+    uint32 access_level = 3;
+    uint64 valid_from = 4;
+    uint64 valid_until = 5;
+    repeated uint32 allowed_gates = 6;
+    bytes pin_hash = 7;
+  }
+  
+  repeated User users = 1;
+  bool require_auth = 2;
+  bool log_access = 3;
+}
+
+// Scheduling
+message GateSchedule {
+  message Event {
+    enum Action {
+      OPEN = 0;
+      CLOSE = 1;
+      LOCK = 2;
+      UNLOCK = 3;
+    }
+    
+    Action action = 1;
+    uint32 hour = 2;
+    uint32 minute = 3;
+    repeated uint32 days_of_week = 4;  // 0=Sun, 6=Sat
+    bool enabled = 5;
+  }
+  
+  repeated Event events = 1;
+  string timezone = 2;
+}
+
+// Gate configuration
+message GateConfig {
+  uint32 gate_id = 1;
+  string name = 2;
+  uint32 open_time_ms = 3;      // Max time to open
+  uint32 close_time_ms = 4;     // Max time to close
+  uint32 auto_close_delay_ms = 5;
+  uint32 obstruction_current_ma = 6;
+  bool safety_beam_enabled = 7;
+  bool auto_close_enabled = 8;
+  float latitude = 9;
+  float longitude = 10;
+  string address = 11;
+}
+
+// Audit log entry
+message GateAuditLog {
+  uint64 timestamp = 1;
+  uint32 gate_id = 2;
+  uint32 user_id = 3;
+  string action = 4;
+  bool success = 5;
+  string details = 6;
+}
