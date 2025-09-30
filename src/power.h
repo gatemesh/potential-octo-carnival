@@ -1,7 +1,10 @@
 #pragma once
+#include <Arduino.h>
+
 #include "PowerStatus.h"
 #include "concurrency/OSThread.h"
 #include "configuration.h"
+#include "sleep.h"
 
 #ifdef ARCH_ESP32
 // "legacy adc calibration driver is deprecated, please migrate to use esp_adc/adc_cali.h and esp_adc/adc_cali_scheme.h

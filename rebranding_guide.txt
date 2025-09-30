@@ -1,0 +1,150 @@
+# GateMesh Rebranding Guide
+
+## Priority: DO THIS FIRST!
+
+Complete rebranding before any feature development. This prevents merge conflicts and ensures clean branding from day one.
+
+## Critical Files to Modify
+
+### 1. Core Configuration
+```cpp
+// src/configuration.h
+#define APP_NAME "GateMesh"
+#define APP_VERSION "1.0.0"
+#define GATEMESH_BUILD
+#define DEFAULT_NODE_NAME "GateMesh"
+
+// Remove Meshtastic features
+#define MESHTASTIC_EXCLUDE_AUDIO
+#define MESHTASTIC_EXCLUDE_PAXCOUNTER
+#define MESHTASTIC_EXCLUDE_CANNEDMESSAGES
+```
+
+### 2. Boot Screen Logo
+```cpp
+// src/graphics/Screen.cpp - drawBootScreen()
+// REPLACE meshtastic_logo_image with gatemesh_logo_image
+// REPLACE "meshtastic.org" with "GateMesh Gate Control"
+```
+
+### 3. Display Strings
+**Find and replace in src/graphics/Screen.cpp:**
+- "Meshtastic" → "GateMesh"
+- "meshtastic.org" → "gatemesh.com"
+- "Visit meshtastic.org" → "Smart Gate Control"
+
+### 4. Bluetooth Name
+```cpp
+// src/bluetooth/BluetoothCommon.cpp
+// CHANGE: "Meshtastic_" + shortName
+// TO: "GateMesh_" + shortName
+```
+
+### 5. Serial Console Banner
+```cpp
+// src/main.cpp - setup()
+LOG_INFO("GateMesh Gate Controller starting...\n");
+console->printf("╔═══════════════════════════════════╗\n");
+console->printf("║     GateMesh Gate Controller      ║\n");
+console->printf("║     Version %s                    ║\n", VERSION);
+console->printf("╚═══════════════════════════════════╝\n");
+```
+
+### 6. Web Interface
+```cpp
+// src/mesh/http/WebServer.cpp
+const char *title = "GateMesh Control Panel";
+// Update all HTML strings with GateMesh branding
+```
+
+### 7. PlatformIO Configuration
+```ini
+# platformio.ini
+[common]
+default_envs = gatemesh-xiao
+build_flags = 
+  -DAPP_NAME="GateMesh"
+  -DGATEMESH_BUILD
+
+[env:gatemesh-xiao]
+extends = esp32s3_base
+board = seeed_xiao_esp32s3
+```
+
+## Automated Search & Replace
+
+```bash
+# Find all Meshtastic references
+grep -r -i "meshtastic" . --exclude-dir=.git --exclude-dir=.pio
+
+# Replace in all source files (REVIEW FIRST!)
+find src/ -type f \( -name "*.cpp" -o -name "*.h" \) \
+  -exec sed -i 's/Meshtastic/GateMesh/g' {} \;
+
+# Replace lowercase
+find src/ -type f \( -name "*.cpp" -o -name "*.h" \) \
+  -exec sed -i 's/meshtastic/gatemesh/g' {} \;
+```
+
+## Logo Creation
+
+Use image2cpp to convert your 128x64 logo:
+```bash
+python tools/image2cpp.py \
+  --input gatemesh-logo.png \
+  --output src/graphics/gatemesh_logo.h \
+  --name gatemesh_logo \
+  --width 128 \
+  --height 64
+```
+
+## Verification Checklist
+
+- [ ] Boot screen shows GateMesh logo
+- [ ] OLED displays "GateMesh" not "Meshtastic"
+- [ ] Bluetooth device name is "GateMesh_XXXX"
+- [ ] Serial console shows GateMesh banner
+- [ ] Web interface shows GateMesh branding
+- [ ] No "meshtastic" strings in logs
+- [ ] Build completes without errors
+
+## Common Missed Locations
+
+1. Error messages in src/error.cpp
+2. OTA update messages in src/mesh/MeshService.cpp
+3. GPS status in src/gps/GPS.cpp
+4. Plugin names in src/plugins/*.cpp
+5. File header comments
+6. README.md and documentation
+
+## Testing
+
+```bash
+# Build and flash
+pio run -e gatemesh-xiao -t upload
+
+# Monitor serial output
+pio device monitor
+
+# Check Bluetooth name
+# Should see: "GateMesh_XXXX"
+
+# Verify web interface
+curl http://192.168.4.1
+# Should return GateMesh HTML
+```
+
+## Commit Message
+
+```
+Rebrand: Meshtastic → GateMesh
+
+- Replace all logos and splash screens
+- Update application name throughout
+- Customize boot sequence for gate control
+- Add GateMesh branding to web interface
+- Update Bluetooth device names
+- Customize serial console output
+```
+
+**Next**: Proceed to `02_NODE_ROLES.md`

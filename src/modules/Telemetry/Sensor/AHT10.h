@@ -6,6 +6,7 @@
 
 #if !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && __has_include(<Adafruit_AHTX0.h>)
 
+#include <Arduino.h>
 #include "../mesh/generated/meshtastic/telemetry.pb.h"
 #include "TelemetrySensor.h"
 #include <Adafruit_AHTX0.h>

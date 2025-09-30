@@ -1,0 +1,283 @@
+# Power Optimization Guide
+
+## Battery Life Goals
+
+- **Sensor Nodes**: 30+ days on 3000mAh battery
+- **Controller Nodes**: 7+ days continuous operation
+- **Solar Nodes**: Indefinite with 10W panel
+
+## Power Consumption Analysis
+
+### XIAO ESP32-S3 Power States
+
+| Mode | Current | Use Case |
+|------|---------|----------|
+| Active (WiFi on) | 120mA | Web configuration |
+| Active (WiFi off) | 80mA | Normal operation |
+| Light sleep | 8mA | Short pauses |
+| Deep sleep | 15μA | Between readings |
+| Ultra-low power | 8μA | Minimal wake capability |
+
+### LoRa Radio (SX1262)
+
+| Mode | Current | Duration |
+|------|---------|----------|
+| TX at 22dBm | 120mA | 300ms |
+| TX at 14dBm | 40mA | 300ms |
+| RX continuous | 15mA | Variable |
+| Standby | 2μA | Between packets |
+| Sleep | 0.2μA | Deep sleep |
+
+## Implementation
+
+### File: `src/modules/irrigation/PowerManager.h`
+
+```cpp
+#pragma once
+
+class IrrigationPowerManager {
+public:
+    enum PowerMode {
+        ALWAYS_ON,           // Controllers
+        SCHEDULED,           // Periodic wake
+        EVENT_DRIVEN,        // Wake on alert
+        ULTRA_LOW_POWER      // Maximum battery life
+    };
+    
+private:
+    PowerMode currentMode = SCHEDULED;
+    uint16_t wakeIntervalMinutes = 15;
+    uint32_t lastWakeTime = 0;
+    
+public:
+    void setPowerMode(Irrigation::NodeType type) {
+        switch (type) {
+            case Irrigation::NodeType::HEADGATE_CONTROLLER:
+            case Irrigation::NodeType::PUMP_CONTROLLER:
+                currentMode = ALWAYS_ON;
+                disableDeepSleep();
+                break;
+                
+            case Irrigation::NodeType::WATER_LEVEL_SENSOR:
+                currentMode = SCHEDULED;
+                wakeIntervalMinutes = 5;
+                enableDeepSleep();
+                break;
+                
+            case Irrigation::NodeType::SOIL_MOISTURE_SENSOR:
+                currentMode = SCHEDULED;
+                wakeIntervalMinutes = 15;
+                enableDeepSleep();
+                break;
+                
+            case Irrigation::NodeType::WEATHER_STATION:
+                currentMode = SCHEDULED;
+                wakeIntervalMinutes = 10;
+                enableDeepSleep();
+                break;
+                
+            case Irrigation::NodeType::GATE_VALVE:
+                currentMode = EVENT_DRIVEN;
+                enableWakeOnRadio();
+                break;
+        }
+    }
+    
+    void enableDeepSleep() {
+        // Configure wake sources
+        esp_sleep_enable_timer_wakeup(wakeIntervalMinutes * 60 * 1000000ULL);
+        esp_sleep_enable_ext0_wakeup(ALERT_PIN, 1);
+        
+        // Disable power-hungry peripherals
+        esp_bluedroid_disable();
+        esp_bt_controller_disable();
+        
+        LOG_INFO("Deep sleep enabled: %d min intervals\n", wakeIntervalMinutes);
+    }
+    
+    void enterDeepSleep() {
+        // Save state to RTC memory
+        saveStateToRTC();
+        
+        // Power down radio
+        radio.sleep();
+        
+        // Enter deep sleep
+        LOG_INFO("Entering deep sleep\n");
+        esp_deep_sleep_start();
+    }
+    
+    void optimizeCPUFrequency() {
+        // Reduce CPU speed when not transmitting
+        if (currentMode != ALWAYS_ON) {
+            setCpuFrequencyMhz(80);  // Down from 240MHz
+            LOG_INFO("CPU frequency: 80MHz\n");
+        }
+    }
+    
+    float calculateBatteryLife(uint16_t capacityMah) {
+        // Calculate daily consumption
+        uint16_t cyclesPerDay = (24 * 60) / wakeIntervalMinutes;
+        
+        float activeMa = 100;  // Average during active cycle
+        float activeDurationMs = 1000;  // 1 second active time
+        
+        float sleepUa = 15;  // Deep sleep current
+        float sleepDurationMin = wakeIntervalMinutes;
+        
+        float activeMah = (activeMa * activeDurationMs / 1000.0 / 3600.0) * cyclesPerDay;
+        float sleepMah = (sleepUa / 1000.0) * 24;
+        
+        float totalDailyMah = activeMah + sleepMah;
+        float usableCapacityMah = capacityMah * 0.8;  // 80% efficiency
+        
+        return usableCapacityMah / totalDailyMah;
+    }
+};
+```
+
+## Solar Charging
+
+### File: `src/modules/irrigation/SolarCharger.h`
+
+```cpp
+#pragma once
+
+class SolarCharger {
+private:
+    static constexpr gpio_num_t SOLAR_VOLTAGE_PIN = GPIO_NUM_3;
+    static constexpr gpio_num_t BATTERY_VOLTAGE_PIN = GPIO_NUM_4;
+    static constexpr float VOLTAGE_DIVIDER_RATIO = 2.0;
+    
+public:
+    float readSolarVoltage() {
+        int raw = analogRead(SOLAR_VOLTAGE_PIN);
+        float voltage = (raw / 4095.0) * 3.3 * VOLTAGE_DIVIDER_RATIO;
+        return voltage;
+    }
+    
+    float readBatteryVoltage() {
+        int raw = analogRead(BATTERY_VOLTAGE_PIN);
+        float voltage = (raw / 4095.0) * 3.3 * VOLTAGE_DIVIDER_RATIO;
+        return voltage;
+    }
+    
+    uint8_t getBatteryPercent() {
+        float voltage = readBatteryVoltage();
+        
+        // LiPo: 4.2V=100%, 3.0V=0%
+        if (voltage >= 4.2) return 100;
+        if (voltage <= 3.0) return 0;
+        
+        return (uint8_t)((voltage - 3.0) / 1.2 * 100.0);
+    }
+    
+    bool isCharging() {
+        float solar = readSolarVoltage();
+        float battery = readBatteryVoltage();
+        
+        return solar > (battery + 0.5);  // 0.5V margin
+    }
+    
+    void adjustPowerMode() {
+        uint8_t batteryPercent = getBatteryPercent();
+        bool charging = isCharging();
+        
+        if (batteryPercent < 20 && !charging) {
+            // Critical battery - ultra low power
+            powerManager.setPowerMode(ULTRA_LOW_POWER);
+            wakeIntervalMinutes = 60;  // 1 hour
+        }
+        else if (batteryPercent < 50) {
+            // Low battery - reduce reporting
+            wakeIntervalMinutes = 30;  // 30 minutes
+        }
+        else if (batteryPercent > 80 && charging) {
+            // Full battery, charging - normal operation
+            wakeIntervalMinutes = 5;   // 5 minutes
+        }
+    }
+};
+```
+
+## Battery Life Calculations
+
+### Sensor Node Example (15-min intervals)
+
+```
+Battery: 3000mAh LiPo
+Wake interval: 15 minutes
+Active time: 1 second per wake
+
+Cycles per day: 96
+Active consumption: 100mA * 1s = 0.027mAh per cycle
+Sleep consumption: 0.015mA * 15min = 0.00375mAh per cycle
+
+Daily consumption: (0.027 + 0.00375) * 96 = 2.95mAh
+Battery life: 3000mAh * 0.8 / 2.95mAh = 814 days
+
+With 10W solar panel: Indefinite (charges faster than consumes)
+```
+
+### Controller Node Example (Always on)
+
+```
+Battery: 10000mAh LiPo
+Average current: 85mA (active mesh monitoring)
+TX duty cycle: 10% at 120mA
+
+Average consumption: 85 + (120 * 0.1) = 97mA
+Daily consumption: 97mA * 24h = 2328mAh
+Battery life: 10000 * 0.8 / 2328 = 3.4 days
+
+With 20W solar panel: Indefinite in good sun
+```
+
+## Optimization Checklist
+
+### Software Optimizations
+- [ ] CPU frequency reduced to 80MHz when idle
+- [ ] WiFi disabled after configuration
+- [ ] Bluetooth disabled completely
+- [ ] Deep sleep between readings
+- [ ] RTC memory used for state
+- [ ] LoRa duty cycle < 1%
+
+### Hardware Optimizations
+- [ ] Sensor power switching (MOSFET)
+- [ ] Pull-down resistors on unused pins
+- [ ] Voltage regulator selection (low quiescent)
+- [ ] Solar panel MPPT charging
+- [ ] Battery protection circuit
+
+### Configuration Optimizations
+- [ ] Report intervals appropriate for role
+- [ ] TX power reduced when possible
+- [ ] Spreading factor optimized
+- [ ] Packet size minimized
+- [ ] ACK requests only when needed
+
+## Power Monitoring Commands
+
+```bash
+# Check power status
+> irrigation power status
+Battery: 3.87V (78%)
+Solar: 5.2V (Charging)
+Current mode: SCHEDULED
+Wake interval: 15 minutes
+Est. battery life: 247 days
+
+# Set power mode
+> irrigation power mode ultra-low
+Power mode set to ULTRA_LOW_POWER
+Wake interval: 60 minutes
+Battery life extended to 890 days
+
+# Force deep sleep
+> irrigation power sleep
+Entering deep sleep...
+Will wake in 15 minutes
+```
+
+**Next**: Proceed to `07_DISPLAY_SYSTEM.md`

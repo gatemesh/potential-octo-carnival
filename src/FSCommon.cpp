@@ -8,6 +8,7 @@
  * device's filesystem.
  *
  */
+#include <Arduino.h>
 #include "FSCommon.h"
 #include "SPILock.h"
 #include "configuration.h"

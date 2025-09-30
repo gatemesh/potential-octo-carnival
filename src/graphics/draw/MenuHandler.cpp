@@ -992,8 +992,8 @@ void menuHandler::switchToMUIMenu()
 
 void menuHandler::TFTColorPickerMenu(OLEDDisplay *display)
 {
-    static const char *optionsArray[] = {"Back", "Default", "GateMesh Green", "Yellow", "Red", "Orange", "Purple", "Teal",
-                                         "Pink", "White"};
+    static const char *optionsArray[] = {"Back",   "Default", "GateMesh Green", "Yellow", "Red",
+                                         "Orange", "Purple",  "Teal",           "Pink",   "White"};
     BannerOverlayOptions bannerOptions;
     bannerOptions.message = "Select Screen Color";
     bannerOptions.optionsArrayPtr = optionsArray;

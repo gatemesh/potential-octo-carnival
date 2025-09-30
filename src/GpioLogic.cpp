@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "GpioLogic.h"
 #include <assert.h>
 

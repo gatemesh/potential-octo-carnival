@@ -4,15 +4,16 @@
 
 using namespace GateMesh;
 
-void testFieldHierarchy() {
+void testFieldHierarchy()
+{
     FieldHierarchy hierarchy;
-    auto* field = new FieldHierarchy::Field();
+    auto *field = new FieldHierarchy::Field();
     field->id = "north_40";
     field->display_name = "North 40 Acres";
     field->acres = 40.0;
     field->crop_type = "alfalfa";
     hierarchy.addField(field);
-    auto* zone = new FieldHierarchy::Zone();
+    auto *zone = new FieldHierarchy::Zone();
     zone->id = "zone_01";
     zone->display_name = "Zone 1";
     zone->acres = 13.5;
@@ -26,7 +27,8 @@ void testFieldHierarchy() {
     std::cout << "FieldHierarchy test passed\n";
 }
 
-int main() {
+int main()
+{
     testFieldHierarchy();
     return 0;
 }

@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 #include "RedirectablePrint.h"
 #include "NodeDB.h"
 #include "RTC.h"
@@ -79,13 +81,13 @@ size_t RedirectablePrint::vprintf(const char *logLevel, const char *format, va_l
             printBuf[f] = '#';
     }
     if (color && logLevel != nullptr) {
-        if (strcmp(logLevel, MESHTASTIC_LOG_LEVEL_DEBUG) == 0)
+        if (strcmp(logLevel, GATEMESH_LOG_LEVEL_DEBUG) == 0)
             Print::write("\u001b[34m", 5);
-        if (strcmp(logLevel, MESHTASTIC_LOG_LEVEL_INFO) == 0)
+        if (strcmp(logLevel, GATEMESH_LOG_LEVEL_INFO) == 0)
             Print::write("\u001b[32m", 5);
-        if (strcmp(logLevel, MESHTASTIC_LOG_LEVEL_WARN) == 0)
+        if (strcmp(logLevel, GATEMESH_LOG_LEVEL_WARN) == 0)
             Print::write("\u001b[33m", 5);
-        if (strcmp(logLevel, MESHTASTIC_LOG_LEVEL_ERROR) == 0)
+        if (strcmp(logLevel, GATEMESH_LOG_LEVEL_ERROR) == 0)
             Print::write("\u001b[31m", 5);
     }
     len = Print::write(printBuf, len);
@@ -107,15 +109,15 @@ void RedirectablePrint::log_to_serial(const char *logLevel, const char *format, 
 
     // include the header
     if (color) {
-        if (strcmp(logLevel, MESHTASTIC_LOG_LEVEL_DEBUG) == 0)
+        if (strcmp(logLevel, GATEMESH_LOG_LEVEL_DEBUG) == 0)
             Print::write("\u001b[34m", 5);
-        if (strcmp(logLevel, MESHTASTIC_LOG_LEVEL_INFO) == 0)
+        if (strcmp(logLevel, GATEMESH_LOG_LEVEL_INFO) == 0)
             Print::write("\u001b[32m", 5);
-        if (strcmp(logLevel, MESHTASTIC_LOG_LEVEL_WARN) == 0)
+        if (strcmp(logLevel, GATEMESH_LOG_LEVEL_WARN) == 0)
             Print::write("\u001b[33m", 5);
-        if (strcmp(logLevel, MESHTASTIC_LOG_LEVEL_ERROR) == 0)
+        if (strcmp(logLevel, GATEMESH_LOG_LEVEL_ERROR) == 0)
             Print::write("\u001b[31m", 5);
-        if (strcmp(logLevel, MESHTASTIC_LOG_LEVEL_TRACE) == 0)
+        if (strcmp(logLevel, GATEMESH_LOG_LEVEL_TRACE) == 0)
             Print::write("\u001b[35m", 5);
     }
 
@@ -298,7 +300,7 @@ void RedirectablePrint::log(const char *logLevel, const char *format, ...)
 
 #if ARCH_PORTDUINO
     // level trace is special, two possible ways to handle it.
-    if (strcmp(logLevel, MESHTASTIC_LOG_LEVEL_TRACE) == 0) {
+    if (strcmp(logLevel, GATEMESH_LOG_LEVEL_TRACE) == 0) {
         if (portduino_config.traceFilename != "") {
             va_list arg;
             va_start(arg, format);
@@ -308,23 +310,23 @@ void RedirectablePrint::log(const char *logLevel, const char *format, ...)
             }
             va_end(arg);
         }
-        if (portduino_config.logoutputlevel < level_trace && strcmp(logLevel, MESHTASTIC_LOG_LEVEL_TRACE) == 0) {
+        if (portduino_config.logoutputlevel < level_trace && strcmp(logLevel, GATEMESH_LOG_LEVEL_TRACE) == 0) {
             delete[] newFormat;
             return;
         }
     }
-    if (portduino_config.logoutputlevel < level_debug && strcmp(logLevel, MESHTASTIC_LOG_LEVEL_DEBUG) == 0) {
+    if (portduino_config.logoutputlevel < level_debug && strcmp(logLevel, GATEMESH_LOG_LEVEL_DEBUG) == 0) {
         delete[] newFormat;
         return;
-    } else if (portduino_config.logoutputlevel < level_info && strcmp(logLevel, MESHTASTIC_LOG_LEVEL_INFO) == 0) {
+    } else if (portduino_config.logoutputlevel < level_info && strcmp(logLevel, GATEMESH_LOG_LEVEL_INFO) == 0) {
         delete[] newFormat;
         return;
-    } else if (portduino_config.logoutputlevel < level_warn && strcmp(logLevel, MESHTASTIC_LOG_LEVEL_WARN) == 0) {
+    } else if (portduino_config.logoutputlevel < level_warn && strcmp(logLevel, GATEMESH_LOG_LEVEL_WARN) == 0) {
         delete[] newFormat;
         return;
     }
 #endif
-    if (moduleConfig.serial.override_console_serial_port && strcmp(logLevel, MESHTASTIC_LOG_LEVEL_DEBUG) == 0) {
+    if (moduleConfig.serial.override_console_serial_port && strcmp(logLevel, GATEMESH_LOG_LEVEL_DEBUG) == 0) {
         delete[] newFormat;
         return;
     }

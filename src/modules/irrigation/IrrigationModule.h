@@ -1,12 +1,13 @@
 #pragma once
 
-#include "SinglePortModule.h"
 #include "IrrigationNode.h"
 #include "IrrigationTypes.h"
+#include "SinglePortModule.h"
 #include "concurrency/OSThread.h"
 
-class IrrigationModule : public SinglePortModule, private concurrency::OSThread {
-public:
+class IrrigationModule : public SinglePortModule, private concurrency::OSThread
+{
+  public:
     IrrigationModule();
 
     // Module interface
@@ -15,7 +16,7 @@ public:
     int32_t runOnce() override;
 
     // Console command handler
-    void handleConsoleCommand(const char* cmd);
+    void handleConsoleCommand(const char *cmd);
 
     // Setup and initialization
     void setup();
@@ -30,7 +31,7 @@ public:
     bool canAcceptCommand(uint32_t sourceNode, const meshtastic_MeshPacket &packet);
     void processCommand(const meshtastic_MeshPacket &packet);
 
-private:
+  private:
     Irrigation::IrrigationState currentState = Irrigation::OFFLINE;
 
     // Timing

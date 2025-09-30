@@ -2,7 +2,8 @@
 #include <cassert>
 #include <iostream>
 
-void testValveController() {
+void testValveController()
+{
     ValveController valve;
     assert(valve.openValve(50));
     // Simulate feedback
@@ -11,7 +12,8 @@ void testValveController() {
     std::cout << "Valve control test passed\n";
 }
 
-int main() {
+int main()
+{
     testValveController();
     return 0;
 }

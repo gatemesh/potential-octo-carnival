@@ -1,0 +1,209 @@
+# GateMesh Quick Start Guide
+
+## For AI Coding Assistants in VS Code
+
+This is the fastest path to get GateMesh running. Follow steps in order.
+
+## 1. Initial Setup (5 minutes)
+
+```bash
+# Clone repository
+git clone https://github.com/YOUR_ORG/gatemesh-firmware.git
+cd gatemesh-firmware
+
+# Install PlatformIO CLI
+pip install platformio
+
+# Initial build test
+pio run -e gatemesh-xiao
+```
+
+## 2. Complete Rebranding (10 minutes)
+
+**Priority: Do this first!**
+
+See `01_REBRANDING_GUIDE.md` for details.
+
+Quick checklist:
+- [ ] Update src/configuration.h (APP_NAME = "GateMesh")
+- [ ] Replace boot logo in src/graphics/Screen.cpp
+- [ ] Change Bluetooth name in src/bluetooth/
+- [ ] Update serial console banner in src/main.cpp
+- [ ] Verify: `grep -r "meshtastic" src/ | wc -l` should be minimal
+
+## 3. Add Node Roles (15 minutes)
+
+Create these files in `src/modules/irrigation/`:
+
+1. **IrrigationTypes.h** - Node type enums
+2. **IrrigationNode.h** - Configuration structure
+3. **IrrigationModule.cpp** - Main module logic
+4. **IrrigationConsole.cpp** - Serial commands
+
+See `02_NODE_ROLES.md` for complete code.
+
+Register in `src/Modules.cpp`:
+```cpp
+#include "modules/irrigation/IrrigationModule.h"
+irrigationModule = new IrrigationModule();
+```
+
+## 4. Add Water Sensor (10 minutes)
+
+Create `src/modules/irrigation/sensors/WaterLevelSensor.h`
+
+See `03_SENSOR_INTEGRATION.md` for implementation.
+
+Test:
+```bash
+> irrigation test water-level
+Reading level... 2.45 feet
+PASS
+```
+
+## 5. Add Basic Display (10 minutes)
+
+Create `src/graphics/irrigation/IrrigationDisplay.h`
+
+See `07_DISPLAY_SYSTEM.md` for layouts.
+
+## 6. Build and Flash (5 minutes)
+
+```bash
+# Build for XIAO ESP32-S3
+pio run -e gatemesh-xiao -t upload
+
+# Monitor serial output
+pio device monitor
+
+# You should see:
+# ╔═══════════════════════════════════╗
+# ║     GateMesh Gate Controller      ║
+# ║     Version 1.0.0                 ║
+# ╚═══════════════════════════════════╝
+```
+
+## 7. Configure First Node (2 minutes)
+
+```bash
+# Set role
+> irrigation role water-sensor
+
+# Set zone
+> irrigation zone 1
+
+# Set location
+> irrigation location "Main Canal"
+
+# Verify
+> irrigation status
+Node Type: WATER_LEVEL_SENSOR
+Zone: 1
+Location: Main Canal
+State: ACTIVE
+```
+
+## 8. Test Basic Function (5 minutes)
+
+```bash
+# Test sensor
+> irrigation test water-level
+Reading level... 2.45 feet
+
+# Test mesh
+> irrigation test mesh
+Scanning... Found 0 other nodes (this is first node)
+
+# Check power
+> irrigation power status
+Battery: 3.87V (78%)
+Solar: 5.2V (Charging)
+```
+
+## File Structure Summary
+
+```
+gatemesh-firmware/
+├── src/
+│   ├── configuration.h (MODIFIED)
+│   ├── main.cpp (MODIFIED)
+│   ├── modules/
+│   │   └── irrigation/ (NEW)
+│   │       ├── IrrigationTypes.h
+│   │       ├── IrrigationNode.h
+│   │       ├── IrrigationModule.cpp
+│   │       ├── IrrigationConsole.cpp
+│   │       └── sensors/
+│   │           └── WaterLevelSensor.h
+│   └── graphics/
+│       └── irrigation/ (NEW)
+│           └── IrrigationDisplay.h
+├── platformio.ini (MODIFIED)
+└── README.md (MODIFIED)
+```
+
+## Common Build Issues
+
+### Issue: Protobuf generation fails
+**Solution**: Use temporary portnum definition
+```cpp
+// src/mesh/generated/portnums.pb.h (temporary)
+#define PortNum_IRRIGATION_APP 68
+```
+
+### Issue: Include errors
+**Solution**: Check paths
+```cpp
+#include "modules/irrigation/IrrigationTypes.h"  // Correct
+#include "IrrigationTypes.h"  // Wrong
+```
+
+### Issue: Namespace conflicts
+**Solution**: Use full namespace
+```cpp
+Irrigation::NodeType type;  // Correct
+NodeType type;  // Wrong
+```
+
+## Next Steps After Quick Start
+
+1. Add more sensors (`03_SENSOR_INTEGRATION.md`)
+2. Implement valve control
+3. Add scheduling system
+4. Set up field hierarchy (`04_FIELD_HIERARCHY.md`)
+5. Optimize power (`06_POWER_OPTIMIZATION.md`)
+6. Field testing (`05_TESTING_GUIDE.md`)
+
+## Minimum Viable Product Checklist
+
+For February 2025 presentation:
+
+- [ ] Rebrand complete
+- [ ] Water level sensor working
+- [ ] Basic valve control
+- [ ] Simple scheduling
+- [ ] 10-mile range demonstrated
+- [ ] Solar power validated
+- [ ] Web interface functional
+- [ ] Farmer documentation ready
+
+## Time Estimate
+
+- Rebranding: 30 minutes
+- Core features: 2 hours
+- Sensor integration: 1 hour
+- Testing: 2 hours
+- Documentation: 1 hour
+
+**Total: ~6 hours to MVP**
+
+## Getting Help
+
+1. Check relevant guide in docs/ folder
+2. Search existing code for examples
+3. Test incrementally (build after each change)
+4. Use serial console for debugging
+
+---
+
+**You're ready to start!** Begin with `01_REBRANDING_GUIDE.md`

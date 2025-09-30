@@ -54,7 +54,7 @@ static uint8_t bytes[MAX_LORA_PAYLOAD_LEN + 1] __attribute__((__aligned__));
  *
  * Currently we only allow one interface, that may change in the future
  */
-Router::Router() : concurrency::OSThread("Router"), fromRadioQueue(MAX_RX_FROMRADIO)
+Router::Router() : concurrency::OSThread("Router"), PacketHistory(400), fromRadioQueue(MAX_RX_FROMRADIO)
 {
     // This is called pre main(), don't touch anything here, the following code is not safe
 

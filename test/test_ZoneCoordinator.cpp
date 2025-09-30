@@ -2,7 +2,8 @@
 #include <cassert>
 #include <iostream>
 
-void testZoneCoordinator() {
+void testZoneCoordinator()
+{
     ZoneCoordinator coordinator;
     coordinator.addZone(1);
     coordinator.addZone(2);
@@ -13,7 +14,8 @@ void testZoneCoordinator() {
     std::cout << "Zone coordination test passed\n";
 }
 
-int main() {
+int main()
+{
     testZoneCoordinator();
     return 0;
 }

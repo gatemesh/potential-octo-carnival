@@ -4,7 +4,8 @@
 
 IrrigationNodeConfig nodeConfig;
 
-void IrrigationNodeConfig::save() {
+void IrrigationNodeConfig::save()
+{
     Preferences prefs;
     prefs.begin("irrigation", false);
 
@@ -37,7 +38,8 @@ void IrrigationNodeConfig::save() {
     prefs.end();
 }
 
-void IrrigationNodeConfig::load() {
+void IrrigationNodeConfig::load()
+{
     Preferences prefs;
     prefs.begin("irrigation", true);
 
@@ -56,7 +58,8 @@ void IrrigationNodeConfig::load() {
         char key[16];
         snprintf(key, sizeof(key), "child%d", i);
         childNodes[i] = prefs.getUInt(key, 0);
-        if (childNodes[i] != 0) childCount = i + 1;
+        if (childNodes[i] != 0)
+            childCount = i + 1;
     }
 
     capabilities = prefs.getUInt("capabilities", 0);
@@ -82,7 +85,8 @@ void IrrigationNodeConfig::load() {
     }
 }
 
-void IrrigationNodeConfig::setDefaults(Irrigation::NodeType nodeType) {
+void IrrigationNodeConfig::setDefaults(Irrigation::NodeType nodeType)
+{
     type = nodeType;
     zoneId = 0;
     locationName[0] = '\0';
@@ -96,57 +100,63 @@ void IrrigationNodeConfig::setDefaults(Irrigation::NodeType nodeType) {
 
     // Set type-specific defaults
     switch (nodeType) {
-        case Irrigation::WATER_LEVEL_SENSOR:
-            maxFlowGPM = 0;
-            minPressurePSI = 0;
-            maxPressurePSI = 50;
-            valveTimeoutMs = 0;
-            break;
+    case Irrigation::WATER_LEVEL_SENSOR:
+        maxFlowGPM = 0;
+        minPressurePSI = 0;
+        maxPressurePSI = 50;
+        valveTimeoutMs = 0;
+        break;
 
-        case Irrigation::SOIL_MOISTURE_SENSOR:
-            moistureMin = 0.0;
-            moistureMax = 100.0;
-            break;
+    case Irrigation::SOIL_MOISTURE_SENSOR:
+        moistureMin = 0.0;
+        moistureMax = 100.0;
+        break;
 
-        case Irrigation::GATE_VALVE:
-        case Irrigation::VARIABLE_VALVE:
-            valveTimeoutMs = 30000; // 30 seconds
-            break;
+    case Irrigation::GATE_VALVE:
+    case Irrigation::VARIABLE_VALVE:
+        valveTimeoutMs = 30000; // 30 seconds
+        break;
 
-        case Irrigation::HEADGATE_CONTROLLER:
-            maxFlowGPM = 1000;
-            minPressurePSI = 10;
-            maxPressurePSI = 80;
-            break;
+    case Irrigation::HEADGATE_CONTROLLER:
+        maxFlowGPM = 1000;
+        minPressurePSI = 10;
+        maxPressurePSI = 80;
+        break;
 
-        default:
-            break;
+    default:
+        break;
     }
 }
 
-bool IrrigationNodeConfig::isController() const {
+bool IrrigationNodeConfig::isController() const
+{
     return static_cast<uint8_t>(type) >= 1 && static_cast<uint8_t>(type) <= 3;
 }
 
-bool IrrigationNodeConfig::isSensor() const {
+bool IrrigationNodeConfig::isSensor() const
+{
     return static_cast<uint8_t>(type) >= 10 && static_cast<uint8_t>(type) <= 14;
 }
 
-bool IrrigationNodeConfig::isActuator() const {
+bool IrrigationNodeConfig::isActuator() const
+{
     return static_cast<uint8_t>(type) >= 20 && static_cast<uint8_t>(type) <= 23;
 }
 
-bool IrrigationNodeConfig::hasCapability(Irrigation::Capabilities cap) const {
+bool IrrigationNodeConfig::hasCapability(Irrigation::Capabilities cap) const
+{
     return (capabilities & static_cast<uint32_t>(cap)) != 0;
 }
 
-void IrrigationNodeConfig::addChild(uint32_t nodeId) {
+void IrrigationNodeConfig::addChild(uint32_t nodeId)
+{
     if (childCount < 8 && !isChild(nodeId)) {
         childNodes[childCount++] = nodeId;
     }
 }
 
-void IrrigationNodeConfig::removeChild(uint32_t nodeId) {
+void IrrigationNodeConfig::removeChild(uint32_t nodeId)
+{
     for (int i = 0; i < childCount; i++) {
         if (childNodes[i] == nodeId) {
             // Shift remaining elements
@@ -159,7 +169,8 @@ void IrrigationNodeConfig::removeChild(uint32_t nodeId) {
     }
 }
 
-bool IrrigationNodeConfig::isChild(uint32_t nodeId) const {
+bool IrrigationNodeConfig::isChild(uint32_t nodeId) const
+{
     for (int i = 0; i < childCount; i++) {
         if (childNodes[i] == nodeId) {
             return true;

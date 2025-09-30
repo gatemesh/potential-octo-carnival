@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pio run:*)",
+      "Bash(rm:*)",
+      "Bash(tee:*)",
+      "Bash(xargs sed:*)",
+      "Bash(1)",
+      "Bash(cat:*)",
+      "Bash(tree:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(timeout 60 pio device monitor --baud 115200 --filter colorize)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(esptool.py:*)",
+      "Bash(python:*)",
+      "Read(//c/Users/justi/.platformio/**)",
+      "Bash(\"C:\\Users\\justi\\.platformio\\packages\\tool-esptoolpy\\esptool.py\" --chip esp32s3 --port COM14 --baud 460800 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 8MB 0x0 .piobuildseeed_xiao_esp32s3firmware.factory.bin)",
+      "Bash(\"C:\\Users\\justi\\.platformio\\packages\\tool-esptoolpy\\esptool.py\" --chip esp32s3 --port COM14 --baud 460800 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 8MB 0x0 .pio/build/seeed_xiao_esp32s3/firmware.factory.bin)",
+      "Bash(timeout 120 pio device monitor --baud 115200 --filter colorize)",
+      "Bash(\"C:\\Users\\justi\\.platformio\\packages\\tool-esptoolpy\\esptool.py\" --chip esp32s3 --port COM14 --baud 460800 erase_flash)",
+      "Bash(pio device:*)",
+      "Bash(\"C:\\Users\\justi\\.platformio\\packages\\tool-esptoolpy\\esptool.py\" --chip esp32s3 --port COM5 --baud 460800 erase_flash)",
+      "Bash(\"C:\\Users\\justi\\.platformio\\packages\\tool-esptoolpy\\esptool.py\" --chip esp32s3 --port COM5 --baud 460800 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 8MB 0x0 \"C:\\Users\\justi\\OneDrive\\Documents\\PlatformIO\\firmware\\.pio\\build\\seeed_xiao_esp32s3\\firmware.factory.bin\")",
+      "Bash(timeout:*)",
+      "Bash(timeout 30 pio device monitor:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

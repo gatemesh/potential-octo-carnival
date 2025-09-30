@@ -179,7 +179,7 @@ meshtastic::GPSStatus *gpsStatus = new meshtastic::GPSStatus();
 meshtastic::NodeStatus *nodeStatus = new meshtastic::NodeStatus();
 
 // Global Bluetooth status
-meshtastic::BluetoothStatus *bluetoothStatus = new meshtastic::BluetoothStatus();
+gatemesh::BluetoothStatus *bluetoothStatus = new gatemesh::BluetoothStatus();
 
 // Scan for I2C Devices
 
@@ -398,6 +398,10 @@ void setup()
     meshtastic_Config_DisplayConfig_OledType screen_model =
         meshtastic_Config_DisplayConfig_OledType::meshtastic_Config_DisplayConfig_OledType_OLED_AUTO;
     OLEDDISPLAY_GEOMETRY screen_geometry = GEOMETRY_128_64;
+
+    // GateMesh irrigation system will be initialized through modules
+
+    // TODO: Add periodic sensor reading, power management, and display updates in main loop
 
 #ifdef USE_SEGGER
     auto mode = false ? SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL : SEGGER_RTT_MODE_NO_BLOCK_TRIM;
@@ -798,21 +802,31 @@ void setup()
 #endif
 
     // If we're taking on the repeater role, use NextHopRouter and turn off 3V3_S rail because peripherals are not needed
+    LOG_INFO("Creating router...");
     if (config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) {
+        LOG_INFO("Creating NextHopRouter");
         router = new NextHopRouter();
+        LOG_INFO("NextHopRouter created");
 #ifdef PIN_3V3_EN
         digitalWrite(PIN_3V3_EN, LOW);
 #endif
-    } else
+    } else {
+        LOG_INFO("Creating ReliableRouter");
         router = new ReliableRouter();
+        LOG_INFO("ReliableRouter created");
+    }
 
     // only play start melody when role is not tracker or sensor
+    LOG_INFO("Router created, checking melody...");
     if (config.power.is_power_saving == true &&
         IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_TRACKER,
                   meshtastic_Config_DeviceConfig_Role_TAK_TRACKER, meshtastic_Config_DeviceConfig_Role_SENSOR))
         LOG_DEBUG("Tracker/Sensor: Skip start melody");
-    else
+    else {
+        LOG_INFO("Playing start melody...");
         playStartMelody();
+        LOG_INFO("Start melody complete");
+    }
 
     // fixed screen override?
     if (config.display.oled != meshtastic_Config_DisplayConfig_OledType_OLED_AUTO)
@@ -964,11 +978,16 @@ void setup()
     }
 #endif
 #endif
+    LOG_INFO("Creating MeshService...");
     service = new MeshService();
+    LOG_INFO("Initializing MeshService...");
     service->init();
+    LOG_INFO("MeshService initialized");
 
     // Now that the mesh service is created, create any modules
+    LOG_INFO("Setting up modules...");
     setupModules();
+    LOG_INFO("Modules setup complete");
 
     // warn the user about a low entropy key
     if (nodeDB->keyIsLowEntropy && !nodeDB->hasWarned) {
@@ -1624,5 +1643,3 @@ void loop()
     }
 }
 #endif
-
-

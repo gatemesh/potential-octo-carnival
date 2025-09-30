@@ -2,7 +2,8 @@
 #include <cassert>
 #include <iostream>
 
-void testFieldConfigLoader() {
+void testFieldConfigLoader()
+{
     FieldConfigLoader loader;
     // Simulate loading from a file (mock or SD required for real test)
     bool loaded = loader.loadFarmConfiguration("/sd/farm_config.json");
@@ -10,7 +11,8 @@ void testFieldConfigLoader() {
     std::cout << "FieldConfigLoader loadFarmConfiguration returned: " << loaded << "\n";
 }
 
-int main() {
+int main()
+{
     testFieldConfigLoader();
     return 0;
 }

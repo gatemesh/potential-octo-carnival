@@ -1,0 +1,25 @@
+# Add these lines to your .gitignore file
+
+# GateMesh Private Documentation (AI Assistant Reference)
+00_PROJECT_OVERVIEW.md
+01_REBRANDING_GUIDE.md
+02_NODE_ROLES.md
+03_SENSOR_INTEGRATION.md
+04_FIELD_HIERARCHY.md
+05_TESTING_GUIDE.md
+06_POWER_OPTIMIZATION.md
+07_DISPLAY_SYSTEM.md
+08_WEB_INTERFACE.md
+09_QUICK_START.md
+GITIGNORE_ADDITIONS.txt
+
+# Original sprawling docs (if you keep them)
+GATEMESH_*.md
+GateMesh_*.md
+copi#*.md
+
+# Temporary development files
+*.swp
+*.swo
+*~
+.DS_Store

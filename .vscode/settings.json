@@ -10,5 +10,7 @@
   },
   "[powershell]": {
     "editor.defaultFormatter": "ms-vscode.powershell"
-  }
+  },
+  "CodeGPT.apiKey": "CodeGPT Plus Beta",
+  "idf.pythonInstallPath": "C:\\Espressif\\tools\\idf-python\\3.11.2\\python.exe"
 }

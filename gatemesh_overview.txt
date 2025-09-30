@@ -1,0 +1,88 @@
+# GateMesh Project Overview
+
+**Purpose**: Agricultural irrigation control system forked from Meshtastic  
+**Target**: February 2025 farmer presentation  
+**Hardware**: Seeed XIAO ESP32-S3 + Wio-SX1262 (primary)
+
+## Core Objectives
+
+1. **Rebrand**: Transform Meshtastic → GateMesh
+2. **Specialize**: Generic mesh → Irrigation-focused
+3. **Scale**: Support 100+ nodes across 10+ mile range
+4. **Optimize**: Solar-powered, battery-efficient operation
+
+## Key Capabilities
+
+- Headgate and valve control
+- Water level monitoring
+- Multi-zone irrigation coordination
+- Scheduled irrigation windows
+- Weather integration
+- Leak detection and auto-cutoff
+- SCADA-ready interfaces
+
+## Project Status
+
+✅ **Complete**
+- Repository forked and renamed
+- Basic module structure created
+- Protobuf definitions drafted
+- Initial firmware integration
+
+🔄 **In Progress**
+- Node role implementation
+- Sensor integration
+- Command authority system
+
+❌ **Pending**
+- Web interface rebranding
+- Field testing
+- Documentation completion
+- Farmer training materials
+
+## Repository Structure
+
+```
+gatemesh-firmware/
+├── src/
+│   ├── modules/
+│   │   └── irrigation/
+│   │       ├── IrrigationTypes.h
+│   │       ├── IrrigationNode.h
+│   │       ├── IrrigationModule.cpp
+│   │       └── sensors/
+│   ├── graphics/
+│   │   └── irrigation_display/
+│   └── configuration.h (REBRANDED)
+├── variants/
+│   └── gatemesh-xiao/
+├── docs/
+│   ├── BUILD_INSTRUCTIONS.md
+│   ├── NODE_ROLES.md
+│   ├── SENSOR_INTEGRATION.md
+│   └── FIELD_HIERARCHY.md
+└── .gitignore (UPDATED)
+```
+
+## Next Steps
+
+1. Review `01_REBRANDING_GUIDE.md`
+2. Implement node roles from `02_NODE_ROLES.md`
+3. Add sensors from `03_SENSOR_INTEGRATION.md`
+4. Test using `04_TESTING_GUIDE.md`
+
+## Documentation Index
+
+- `00_PROJECT_OVERVIEW.md` - This file
+- `01_REBRANDING_GUIDE.md` - Complete rebranding checklist
+- `02_NODE_ROLES.md` - Node type definitions and configuration
+- `03_SENSOR_INTEGRATION.md` - Hardware sensor implementations
+- `04_FIELD_HIERARCHY.md` - Farm/field/zone organization
+- `05_TESTING_GUIDE.md` - Testing procedures and validation
+- `06_POWER_OPTIMIZATION.md` - Battery and solar optimization
+- `07_DISPLAY_SYSTEM.md` - OLED display customization
+- `08_WEB_INTERFACE.md` - Web UI configuration
+
+**Status**: Living document - Update as project progresses  
+**Version**: 1.0.0  
+**Last Updated**: January 2025

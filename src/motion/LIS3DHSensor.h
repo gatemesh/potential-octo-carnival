@@ -6,6 +6,7 @@
 
 #if !defined(ARCH_STM32WL) && !MESHTASTIC_EXCLUDE_I2C && __has_include(<Adafruit_LIS3DH.h>)
 
+#include <Arduino.h>
 #include <Adafruit_LIS3DH.h>
 
 class LIS3DHSensor : public MotionSensor

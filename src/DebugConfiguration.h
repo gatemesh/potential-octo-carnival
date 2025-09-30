@@ -23,13 +23,13 @@ extern MemGet memGet;
 #define SERIAL_BAUD 115200 // Serial debug baud rate
 #endif
 
-#define MESHTASTIC_LOG_LEVEL_DEBUG "DEBUG"
-#define MESHTASTIC_LOG_LEVEL_INFO "INFO "
-#define MESHTASTIC_LOG_LEVEL_WARN "WARN "
-#define MESHTASTIC_LOG_LEVEL_ERROR "ERROR"
-#define MESHTASTIC_LOG_LEVEL_CRIT "CRIT "
-#define MESHTASTIC_LOG_LEVEL_TRACE "TRACE"
-#define MESHTASTIC_LOG_LEVEL_HEAP "HEAP"
+#define GATEMESH_LOG_LEVEL_DEBUG "DEBUG"
+#define GATEMESH_LOG_LEVEL_INFO "INFO "
+#define GATEMESH_LOG_LEVEL_WARN "WARN "
+#define GATEMESH_LOG_LEVEL_ERROR "ERROR"
+#define GATEMESH_LOG_LEVEL_CRIT "CRIT "
+#define GATEMESH_LOG_LEVEL_TRACE "TRACE"
+#define GATEMESH_LOG_LEVEL_HEAP "HEAP"
 
 #include "SerialConsole.h"
 
@@ -53,12 +53,12 @@ extern MemGet memGet;
 #define LOG_TRACE(...) SEGGER_RTT_printf(0, __VA_ARGS__)
 #else
 #if defined(DEBUG_PORT) && !defined(DEBUG_MUTE)
-#define LOG_DEBUG(...) DEBUG_PORT.log(MESHTASTIC_LOG_LEVEL_DEBUG, __VA_ARGS__)
-#define LOG_INFO(...) DEBUG_PORT.log(MESHTASTIC_LOG_LEVEL_INFO, __VA_ARGS__)
-#define LOG_WARN(...) DEBUG_PORT.log(MESHTASTIC_LOG_LEVEL_WARN, __VA_ARGS__)
-#define LOG_ERROR(...) DEBUG_PORT.log(MESHTASTIC_LOG_LEVEL_ERROR, __VA_ARGS__)
-#define LOG_CRIT(...) DEBUG_PORT.log(MESHTASTIC_LOG_LEVEL_CRIT, __VA_ARGS__)
-#define LOG_TRACE(...) DEBUG_PORT.log(MESHTASTIC_LOG_LEVEL_TRACE, __VA_ARGS__)
+#define LOG_DEBUG(...) DEBUG_PORT.log(GATEMESH_LOG_LEVEL_DEBUG, __VA_ARGS__)
+#define LOG_INFO(...) DEBUG_PORT.log(GATEMESH_LOG_LEVEL_INFO, __VA_ARGS__)
+#define LOG_WARN(...) DEBUG_PORT.log(GATEMESH_LOG_LEVEL_WARN, __VA_ARGS__)
+#define LOG_ERROR(...) DEBUG_PORT.log(GATEMESH_LOG_LEVEL_ERROR, __VA_ARGS__)
+#define LOG_CRIT(...) DEBUG_PORT.log(GATEMESH_LOG_LEVEL_CRIT, __VA_ARGS__)
+#define LOG_TRACE(...) DEBUG_PORT.log(GATEMESH_LOG_LEVEL_TRACE, __VA_ARGS__)
 #else
 #define LOG_DEBUG(...)
 #define LOG_INFO(...)
@@ -70,7 +70,7 @@ extern MemGet memGet;
 #endif
 
 #if defined(DEBUG_HEAP)
-#define LOG_HEAP(...) DEBUG_PORT.log(MESHTASTIC_LOG_LEVEL_HEAP, __VA_ARGS__)
+#define LOG_HEAP(...) DEBUG_PORT.log(GATEMESH_LOG_LEVEL_HEAP, __VA_ARGS__)
 
 // Macro-based heap debugging
 #define DEBUG_HEAP_BEFORE auto heapBefore = memGet.getFreeHeap();
@@ -88,7 +88,7 @@ extern MemGet memGet;
 #define DEBUG_HEAP_AFTER(context, ptr)
 #endif
 
-/// A C wrapper for LOG_DEBUG that can be used from arduino C libs that don't know about C++ or meshtastic
+/// A C wrapper for LOG_DEBUG that can be used from arduino C libs that don't know about C++ or gatemesh
 extern "C" void logLegacy(const char *level, const char *fmt, ...);
 
 #define SYSLOG_NILVALUE "-"

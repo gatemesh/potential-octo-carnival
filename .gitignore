@@ -54,3 +54,19 @@ GATEMESH_REBRANDING.*
 gatemesh_irrigation_development.*
 GATEMESH_IRRIGATION_DEVELOPMENT.*
 GateMesh_Field_Hierarchy_Structure.md
+
+# GateMesh Core Documentation (local development guides)
+00_PROJECT_OVERVIEW.md
+01_REBRANDING_GUIDE.md
+02_NODE_ROLES.md
+03_SENSOR_INTEGRATION.md
+04_FIELD_HIERARCHY.md
+05_TESTING_GUIDE.md
+06_POWER_OPTIMIZATION.md
+07_DISPLAY_SYSTEM.md
+08_WEB_INTERFACE.md
+WAVE_0_COMPLETION_REPORT.md
+
+# Build logs
+build*.log
+*.log

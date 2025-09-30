@@ -2,7 +2,8 @@
 #include <cassert>
 #include <iostream>
 
-void testWaterLevelSensor() {
+void testWaterLevelSensor()
+{
     WaterLevelSensor sensor;
     assert(sensor.init());
     float level = sensor.readLevel();
@@ -10,7 +11,8 @@ void testWaterLevelSensor() {
     std::cout << "Water level test passed: " << level << " ft\n";
 }
 
-int main() {
+int main()
+{
     testWaterLevelSensor();
     return 0;
 }

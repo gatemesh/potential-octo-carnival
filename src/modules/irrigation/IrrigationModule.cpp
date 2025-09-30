@@ -13,15 +13,18 @@
 
 IrrigationModule *irrigationModule;
 
-IrrigationModule::IrrigationModule() : SinglePortModule("Irrigation", (meshtastic_PortNum)68), concurrency::OSThread("Irrigation") {
+IrrigationModule::IrrigationModule() : SinglePortModule("Irrigation", (meshtastic_PortNum)68), concurrency::OSThread("Irrigation")
+{
 }
 
-bool IrrigationModule::wantPacket(const meshtastic_MeshPacket *p) {
+bool IrrigationModule::wantPacket(const meshtastic_MeshPacket *p)
+{
     // Accept packets for our port number
     return p->decoded.portnum == meshtastic_PortNum_IRRIGATION_APP;
 }
 
-void IrrigationModule::setup() {
+void IrrigationModule::setup()
+{
     // Load configuration
     loadConfig();
 
@@ -39,40 +42,42 @@ void IrrigationModule::setup() {
     LOG_INFO("Irrigation module initialized as %s", Irrigation::getNodeTypeName(nodeConfig.type));
 }
 
-void IrrigationModule::setupRoleBehavior() {
+void IrrigationModule::setupRoleBehavior()
+{
     switch (nodeConfig.type) {
-        case Irrigation::WATER_LEVEL_SENSOR:
-            // Report water level every 5 minutes
-            sensorIntervalMs = 300000;
-            break;
+    case Irrigation::WATER_LEVEL_SENSOR:
+        // Report water level every 5 minutes
+        sensorIntervalMs = 300000;
+        break;
 
-        case Irrigation::SOIL_MOISTURE_SENSOR:
-            // Report moisture every 15 minutes
-            sensorIntervalMs = 900000;
-            break;
+    case Irrigation::SOIL_MOISTURE_SENSOR:
+        // Report moisture every 15 minutes
+        sensorIntervalMs = 900000;
+        break;
 
-        case Irrigation::HEADGATE_CONTROLLER:
-            // Always awake, check for commands frequently
-            sensorIntervalMs = 10000;
-            break;
+    case Irrigation::HEADGATE_CONTROLLER:
+        // Always awake, check for commands frequently
+        sensorIntervalMs = 10000;
+        break;
 
-        case Irrigation::GATE_VALVE:
-            // Listen for commands, report status periodically
-            sensorIntervalMs = 30000;
-            break;
+    case Irrigation::GATE_VALVE:
+        // Listen for commands, report status periodically
+        sensorIntervalMs = 30000;
+        break;
 
-        case Irrigation::WEATHER_STATION:
-            // Report weather every 10 minutes
-            sensorIntervalMs = 600000;
-            break;
+    case Irrigation::WEATHER_STATION:
+        // Report weather every 10 minutes
+        sensorIntervalMs = 600000;
+        break;
 
-        default:
-            sensorIntervalMs = 60000; // 1 minute default
-            break;
+    default:
+        sensorIntervalMs = 60000; // 1 minute default
+        break;
     }
 }
 
-int32_t IrrigationModule::runOnce() {
+int32_t IrrigationModule::runOnce()
+{
     // Update state if initializing
     if (currentState == Irrigation::INITIALIZING) {
         setState(Irrigation::IDLE);
@@ -98,7 +103,8 @@ int32_t IrrigationModule::runOnce() {
     return sensorIntervalMs; // Return next run time
 }
 
-ProcessMessage IrrigationModule::handleReceived(const meshtastic_MeshPacket &mp) {
+ProcessMessage IrrigationModule::handleReceived(const meshtastic_MeshPacket &mp)
+{
     // Only handle irrigation messages
     if (mp.decoded.portnum != meshtastic_PortNum_IRRIGATION_APP) {
         return ProcessMessage::CONTINUE;
@@ -118,23 +124,25 @@ ProcessMessage IrrigationModule::handleReceived(const meshtastic_MeshPacket &mp)
     return ProcessMessage::STOP;
 }
 
-void IrrigationModule::setNodeType(Irrigation::NodeType type) {
+void IrrigationModule::setNodeType(Irrigation::NodeType type)
+{
     nodeConfig.setDefaults(type);
     saveConfig();
     setupRoleBehavior();
     LOG_INFO("Node type set to %s", Irrigation::getNodeTypeName(type));
 }
 
-void IrrigationModule::setState(Irrigation::IrrigationState newState) {
+void IrrigationModule::setState(Irrigation::IrrigationState newState)
+{
     if (currentState != newState) {
-        LOG_INFO("Irrigation state changed: %s -> %s",
-                 Irrigation::getStateName(currentState),
+        LOG_INFO("Irrigation state changed: %s -> %s", Irrigation::getStateName(currentState),
                  Irrigation::getStateName(newState));
         currentState = newState;
     }
 }
 
-bool IrrigationModule::canAcceptCommand(uint32_t sourceNode, const meshtastic_MeshPacket &packet) {
+bool IrrigationModule::canAcceptCommand(uint32_t sourceNode, const meshtastic_MeshPacket &packet)
+{
     // Controllers can command their children
     if (nodeConfig.isController()) {
         return nodeConfig.isChild(sourceNode);
@@ -153,13 +161,15 @@ bool IrrigationModule::canAcceptCommand(uint32_t sourceNode, const meshtastic_Me
     return false;
 }
 
-void IrrigationModule::processCommand(const meshtastic_MeshPacket &packet) {
+void IrrigationModule::processCommand(const meshtastic_MeshPacket &packet)
+{
     // TODO: Decode and process irrigation commands
     // This will depend on the protobuf definitions
     LOG_INFO("Processing irrigation command from 0x%x", packet.from);
 }
 
-void IrrigationModule::updateSensors() {
+void IrrigationModule::updateSensors()
+{
     if (!nodeConfig.isSensor() && !nodeConfig.hasCapability(Irrigation::CAN_SENSE)) {
         return;
     }
@@ -185,7 +195,8 @@ void IrrigationModule::updateSensors() {
     sendSensorData();
 }
 
-void IrrigationModule::controlActuators() {
+void IrrigationModule::controlActuators()
+{
     if (!nodeConfig.isActuator() && !nodeConfig.hasCapability(Irrigation::CAN_ACTUATE)) {
         return;
     }
@@ -194,7 +205,8 @@ void IrrigationModule::controlActuators() {
     // TODO: Implement actuator control logic
 }
 
-void IrrigationModule::performAutoDetection() {
+void IrrigationModule::performAutoDetection()
+{
     LOG_INFO("Performing hardware auto-detection...");
 
     hasFlowSensor = detectFlowSensor();
@@ -229,35 +241,30 @@ void IrrigationModule::performAutoDetection() {
     }
 }
 
-void IrrigationModule::handleConsoleCommand(const char* cmd) {
+void IrrigationModule::handleConsoleCommand(const char *cmd)
+{
     if (strncmp(cmd, "role ", 5) == 0) {
-        const char* roleStr = cmd + 5;
+        const char *roleStr = cmd + 5;
 
         if (strcmp(roleStr, "headgate") == 0) {
             setNodeType(Irrigation::HEADGATE_CONTROLLER);
             LOG_INFO("Set role to HEADGATE CONTROLLER\n");
-        }
-        else if (strcmp(roleStr, "water-sensor") == 0) {
+        } else if (strcmp(roleStr, "water-sensor") == 0) {
             setNodeType(Irrigation::WATER_LEVEL_SENSOR);
             LOG_INFO("Set role to WATER LEVEL SENSOR\n");
-        }
-        else if (strcmp(roleStr, "valve") == 0) {
+        } else if (strcmp(roleStr, "valve") == 0) {
             setNodeType(Irrigation::GATE_VALVE);
             LOG_INFO("Set role to GATE VALVE\n");
-        }
-        else if (strcmp(roleStr, "pump") == 0) {
+        } else if (strcmp(roleStr, "pump") == 0) {
             setNodeType(Irrigation::PUMP_CONTROLLER);
             LOG_INFO("Set role to PUMP CONTROLLER\n");
-        }
-        else if (strcmp(roleStr, "moisture") == 0) {
+        } else if (strcmp(roleStr, "moisture") == 0) {
             setNodeType(Irrigation::SOIL_MOISTURE_SENSOR);
             LOG_INFO("Set role to SOIL MOISTURE SENSOR\n");
-        }
-        else if (strcmp(roleStr, "weather") == 0) {
+        } else if (strcmp(roleStr, "weather") == 0) {
             setNodeType(Irrigation::WEATHER_STATION);
             LOG_INFO("Set role to WEATHER STATION\n");
-        }
-        else {
+        } else {
             LOG_ERROR("Unknown role: %s\n", roleStr);
             LOG_INFO("Available roles:\n");
             LOG_INFO("  headgate    - Main gate controller\n");
@@ -267,8 +274,7 @@ void IrrigationModule::handleConsoleCommand(const char* cmd) {
             LOG_INFO("  moisture    - Soil moisture sensor\n");
             LOG_INFO("  weather     - Weather station\n");
         }
-    }
-    else if (strcmp(cmd, "status") == 0) {
+    } else if (strcmp(cmd, "status") == 0) {
         LOG_INFO("Irrigation Status:\n");
         LOG_INFO("  Type: %s\n", Irrigation::getNodeTypeName(nodeConfig.type));
         LOG_INFO("  Zone: %d\n", nodeConfig.zoneId);
@@ -279,51 +285,88 @@ void IrrigationModule::handleConsoleCommand(const char* cmd) {
     }
 }
 
-void IrrigationModule::sendStatusReport() {
+void IrrigationModule::sendStatusReport()
+{
     // TODO: Send periodic status report
     LOG_DEBUG("Sending irrigation status report");
 }
 
-void IrrigationModule::sendSensorData() {
+void IrrigationModule::sendSensorData()
+{
     // TODO: Send sensor data
     LOG_DEBUG("Sending sensor data");
 }
 
-void IrrigationModule::handleValveCommand(uint8_t position, uint32_t duration) {
+void IrrigationModule::handleValveCommand(uint8_t position, uint32_t duration)
+{
     setValvePosition(position);
     valvePosition = position;
     LOG_INFO("Valve set to %d%%", position);
 }
 
-void IrrigationModule::handlePumpCommand(bool enable) {
+void IrrigationModule::handlePumpCommand(bool enable)
+{
     setPumpState(enable);
     pumpRunning = enable;
     LOG_INFO("Pump %s", enable ? "started" : "stopped");
 }
 
-void IrrigationModule::updateDisplay() {
+void IrrigationModule::updateDisplay()
+{
     // TODO: Update OLED display with irrigation info
 }
 
 // Hardware detection stubs (to be implemented based on actual hardware)
-bool IrrigationModule::detectFlowSensor() { return false; }
-bool IrrigationModule::detectPressureSensor() { return false; }
-bool IrrigationModule::detectMoistureSensor() { return false; }
-bool IrrigationModule::detectMotorControl() { return false; }
-bool IrrigationModule::detectLevelSensor() { return false; }
-bool IrrigationModule::detectWeatherSensors() { return false; }
+bool IrrigationModule::detectFlowSensor()
+{
+    return false;
+}
+bool IrrigationModule::detectPressureSensor()
+{
+    return false;
+}
+bool IrrigationModule::detectMoistureSensor()
+{
+    return false;
+}
+bool IrrigationModule::detectMotorControl()
+{
+    return false;
+}
+bool IrrigationModule::detectLevelSensor()
+{
+    return false;
+}
+bool IrrigationModule::detectWeatherSensors()
+{
+    return false;
+}
 
-float IrrigationModule::readFlowRate() { return 0.0; }
-float IrrigationModule::readPressure() { return 0.0; }
-float IrrigationModule::readMoisture() { return 0.0; }
-float IrrigationModule::readWaterLevel() { return 0.0; }
+float IrrigationModule::readFlowRate()
+{
+    return 0.0;
+}
+float IrrigationModule::readPressure()
+{
+    return 0.0;
+}
+float IrrigationModule::readMoisture()
+{
+    return 0.0;
+}
+float IrrigationModule::readWaterLevel()
+{
+    return 0.0;
+}
 void IrrigationModule::setValvePosition(uint8_t position) {}
 void IrrigationModule::setPumpState(bool enable) {}
 
-void IrrigationModule::loadConfig() {
+void IrrigationModule::loadConfig()
+{
     nodeConfig.load();
 }
 
-void IrrigationModule::saveConfig() {
+void IrrigationModule::saveConfig()
+{
     nodeConfig.save();
 }

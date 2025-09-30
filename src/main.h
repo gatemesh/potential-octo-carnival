@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Arduino.h>
+
 #include "BluetoothStatus.h"
 #include "GPSStatus.h"
 #include "NodeStatus.h"

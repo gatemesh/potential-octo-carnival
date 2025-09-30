@@ -1,0 +1,202 @@
+# Field Hierarchy System
+
+## Overview
+
+Organize nodes into Farm → Field → Zone structure for logical management.
+
+## Hierarchy Structure
+
+```
+Farm
+├── Field 1 (North 40)
+│   ├── Zone 1 (13.5 acres)
+│   ├── Zone 2 (13.5 acres)
+│   └── Zone 3 (13.0 acres)
+├── Field 2 (South 80)
+│   ├── Zone 1 (20 acres)
+│   └── Zone 2 (60 acres)
+└── Infrastructure
+    ├── Main Canal
+    ├── Pump Station
+    └── Repeaters
+```
+
+## Data Structures
+
+### File: `src/modules/irrigation/FieldHierarchy.h`
+
+```cpp
+#pragma once
+
+namespace Irrigation {
+
+struct Farm {
+    uint32_t id;
+    char name[32];
+    float totalAcres;
+    float irrigatedAcres;
+};
+
+struct Field {
+    uint32_t id;
+    uint32_t farmId;
+    char name[32];
+    float acres;
+    char cropType[16];
+};
+
+struct Zone {
+    uint32_t id;
+    uint32_t fieldId;
+    char name[32];
+    float acres;
+    uint8_t priority;
+    uint32_t valveNodes[4];
+    uint32_t sensorNodes[4];
+};
+
+class FieldHierarchy {
+private:
+    Farm farm;
+    Field fields[10];
+    Zone zones[32];
+    uint8_t fieldCount = 0;
+    uint8_t zoneCount = 0;
+    
+public:
+    Field* getField(uint32_t fieldId);
+    Zone* getZone(uint32_t zoneId);
+    Zone* getZoneByNode(uint32_t nodeId);
+    
+    void addField(const Field& field);
+    void addZone(const Zone& zone);
+    void assignNodeToZone(uint32_t nodeId, uint32_t zoneId);
+};
+
+} // namespace Irrigation
+```
+
+## Configuration Format
+
+### File: `config/farm_layout.json`
+
+```json
+{
+  "farm": {
+    "id": 1,
+    "name": "Smith Ranch",
+    "totalAcres": 160,
+    "irrigatedAcres": 120
+  },
+  "fields": [
+    {
+      "id": 1,
+      "name": "North 40",
+      "acres": 40,
+      "cropType": "alfalfa",
+      "zones": [
+        {
+          "id": 1,
+          "name": "Zone 1",
+          "acres": 13.5,
+          "priority": 1,
+          "valveNodes": ["0x1001", "0x1002"],
+          "sensorNodes": ["0x2001"]
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Console Commands
+
+```bash
+# Set node's zone
+> irrigation zone 1
+
+# Set node's field
+> irrigation field 1
+
+# Query hierarchy
+> irrigation hierarchy
+Farm: Smith Ranch (160 acres)
+  Field 1: North 40 (40 acres) - alfalfa
+    Zone 1: 13.5 acres - 2 valves, 1 sensor
+    Zone 2: 13.5 acres - 2 valves, 1 sensor
+    Zone 3: 13.0 acres - 1 valve, 1 sensor
+
+# List nodes in zone
+> irrigation zone-nodes 1
+Zone 1 Nodes:
+  0x1001 - Gate Valve (Inlet)
+  0x1002 - Gate Valve (Lateral A)
+  0x2001 - Water Level Sensor
+
+# Start zone irrigation
+> irrigation start-zone 1
+Opening valves for Zone 1...
+Started: North 40 - Zone 1
+```
+
+## Implementation
+
+### File: `src/modules/irrigation/ZoneCoordinator.cpp`
+
+```cpp
+#include "FieldHierarchy.h"
+
+class ZoneCoordinator {
+private:
+    FieldHierarchy hierarchy;
+    uint8_t maxConcurrentZones = 2;
+    uint8_t activeZoneCount = 0;
+    
+public:
+    bool startZoneIrrigation(uint32_t zoneId) {
+        Zone* zone = hierarchy.getZone(zoneId);
+        if (!zone) return false;
+        
+        // Check water supply
+        if (!checkWaterAvailable()) {
+            LOG_WARN("Insufficient water for zone %d\n", zoneId);
+            return false;
+        }
+        
+        // Check concurrent limit
+        if (activeZoneCount >= maxConcurrentZones) {
+            LOG_INFO("Zone %d queued\n", zoneId);
+            queueZone(zoneId);
+            return false;
+        }
+        
+        // Open all valves in zone
+        for (int i = 0; i < 4; i++) {
+            if (zone->valveNodes[i] != 0) {
+                sendValveCommand(zone->valveNodes[i], VALVE_OPEN);
+            }
+        }
+        
+        activeZoneCount++;
+        LOG_INFO("Started irrigation: Zone %d\n", zoneId);
+        return true;
+    }
+    
+    void stopZoneIrrigation(uint32_t zoneId) {
+        Zone* zone = hierarchy.getZone(zoneId);
+        if (!zone) return;
+        
+        // Close all valves
+        for (int i = 0; i < 4; i++) {
+            if (zone->valveNodes[i] != 0) {
+                sendValveCommand(zone->valveNodes[i], VALVE_CLOSE);
+            }
+        }
+        
+        activeZoneCount--;
+        LOG_INFO("Stopped irrigation: Zone %d\n", zoneId);
+    }
+};
+```
+
+**Next**: Proceed to `05_TESTING_GUIDE.md`

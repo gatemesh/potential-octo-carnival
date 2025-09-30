@@ -4,8 +4,8 @@
 #include "PowerFSM.h"
 #include "Throttle.h"
 #include "configuration.h"
-#include "time.h"
 #include "modules/irrigation/IrrigationModule.h"
+#include "time.h"
 
 extern IrrigationModule *irrigationModule;
 
@@ -156,7 +156,7 @@ void SerialConsole::readLine()
 {
     while (Port.available() && lineBufferPos < sizeof(lineBuffer) - 1) {
         char c = Port.read();
-        
+
         if (c == '\n' || c == '\r') {
             if (lineBufferPos > 0) {
                 lineBuffer[lineBufferPos] = '\0';
@@ -172,24 +172,29 @@ void SerialConsole::readLine()
 void SerialConsole::processTextCommand(const char *cmd)
 {
     // Skip empty commands
-    if (!cmd || strlen(cmd) == 0) return;
-    
+    if (!cmd || strlen(cmd) == 0)
+        return;
+
     // Skip commands that start with protobuf framing
-    if (cmd[0] == 0x94) return;
-    
+    if (cmd[0] == 0x94)
+        return;
+
     // Trim leading/trailing whitespace
     const char *start = cmd;
-    while (*start && isspace(*start)) start++;
-    
+    while (*start && isspace(*start))
+        start++;
+
     const char *end = start + strlen(start) - 1;
-    while (end > start && isspace(*end)) end--;
-    
+    while (end > start && isspace(*end))
+        end--;
+
     char trimmedCmd[256];
     size_t len = end - start + 1;
-    if (len >= sizeof(trimmedCmd)) len = sizeof(trimmedCmd) - 1;
+    if (len >= sizeof(trimmedCmd))
+        len = sizeof(trimmedCmd) - 1;
     memcpy(trimmedCmd, start, len);
     trimmedCmd[len] = '\0';
-    
+
     // Process commands
     if (irrigationModule) {
         irrigationModule->handleConsoleCommand(trimmedCmd);

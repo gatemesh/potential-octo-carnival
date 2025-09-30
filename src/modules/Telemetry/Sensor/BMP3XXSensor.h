@@ -7,6 +7,7 @@
 
 #define SEAL_LEVEL_HPA 1013.2f
 
+#include <Arduino.h>
 #include "TelemetrySensor.h"
 #include <Adafruit_BMP3XX.h>
 #include <typeinfo>

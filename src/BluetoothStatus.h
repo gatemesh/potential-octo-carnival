@@ -5,12 +5,13 @@
 #include "meshUtils.h"
 #include <Arduino.h>
 
-namespace meshtastic
+// GateMesh Bluetooth status in gatemesh namespace, but inheriting from meshtastic::Status
+namespace gatemesh
 {
 
 // Describes the state of the Bluetooth connection
 // Allows display to handle pairing events without each UI needing to explicitly hook the Bluefruit / NimBLE code
-class BluetoothStatus : public Status
+class BluetoothStatus : public ::meshtastic::Status
 {
   public:
     enum class ConnectionState {
@@ -38,7 +39,7 @@ class BluetoothStatus : public Status
     }
 
     // New BluetoothStatus: pairing, with passkey
-    explicit BluetoothStatus(const std::string &passkey) : Status()
+    explicit BluetoothStatus(const std::string &passkey) : ::meshtastic::Status()
     {
         statusType = STATUS_TYPE_BLUETOOTH;
         this->state = ConnectionState::PAIRING;
@@ -114,6 +115,6 @@ class BluetoothStatus : public Status
     }
 };
 
-} // namespace meshtastic
+} // namespace gatemesh
 
-extern meshtastic::BluetoothStatus *bluetoothStatus;
+extern gatemesh::BluetoothStatus *bluetoothStatus;

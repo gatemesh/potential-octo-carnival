@@ -6,6 +6,7 @@
 
 #if !defined(ARCH_STM32WL) && !MESHTASTIC_EXCLUDE_I2C && __has_include(<Adafruit_MPU6050.h>)
 
+#include <Arduino.h>
 #include <Adafruit_MPU6050.h>
 
 class MPU6050Sensor : public MotionSensor

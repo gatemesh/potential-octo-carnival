@@ -1,0 +1,275 @@
+# Testing and Validation Guide
+
+## Pre-Deployment Testing
+
+### 1. Build Verification
+
+```bash
+# Clean build
+pio run -e gatemesh-xiao --target clean
+pio run -e gatemesh-xiao
+
+# Expected output:
+# Building .pio/build/gatemesh-xiao/firmware.bin
+# RAM:   [====      ]  45.2% (used 148220 bytes from 327680 bytes)
+# Flash: [=====     ]  52.1% (used 1091205 bytes from 2097152 bytes)
+# SUCCESS
+```
+
+### 2. Sensor Testing
+
+```bash
+# Flash test firmware
+pio run -e gatemesh-xiao -t upload
+
+# Connect to serial
+pio device monitor
+
+# Test water level sensor
+> irrigation test water-level
+Initializing sensor... OK
+Reading level... 2.45 feet
+PASS
+
+# Test flow sensor
+> irrigation test flow
+Initializing sensor... OK
+Run water through sensor...
+Flow rate: 12.3 GPM
+PASS
+
+# Test moisture sensor
+> irrigation test moisture
+Power on... OK
+Reading moisture... 62%
+Power off... OK
+PASS
+```
+
+### 3. Communication Testing
+
+```bash
+# Test mesh connectivity
+> irrigation test mesh
+Scanning for nodes...
+Found 3 nodes:
+  0x1234 - HEADGATE_CONTROLLER (RSSI: -65)
+  0x2345 - WATER_LEVEL_SENSOR (RSSI: -78)
+  0x3456 - GATE_VALVE (RSSI: -82)
+
+# Test command sending
+> irrigation test command 0x3456 open
+Sending VALVE_OPEN to 0x3456...
+ACK received in 234ms
+PASS
+
+# Range test
+> irrigation test range
+Testing at max power (22 dBm)...
+Packet 1/10: ACK (RSSI: -95)
+Packet 2/10: ACK (RSSI: -94)
+...
+Success rate: 90% (9/10)
+Max range: ~8 miles
+```
+
+### 4. Power Consumption Testing
+
+```bash
+# Measure active current
+> irrigation test power active
+Measuring active current...
+ESP32: 85mA
+LoRa TX: +120mA (peak)
+Sensors: 15mA
+Total: ~220mA peak, 100mA average
+
+# Measure sleep current
+> irrigation test power sleep
+Entering deep sleep...
+Current: 18uA
+Wake interval: 15 minutes
+Battery life (3000mAh): 247 days
+
+# Solar charging test
+> irrigation test solar
+Solar voltage: 5.2V
+Battery voltage: 3.87V
+Charging current: 245mA
+Charging: YES
+```
+
+### 5. Valve Control Testing
+
+```bash
+# Test valve open
+> irrigation test valve open
+Opening valve...
+Position: 0% -> 100%
+Time: 28 seconds
+Current: 850mA peak
+PASS
+
+# Test valve close
+> irrigation test valve close
+Closing valve...
+Position: 100% -> 0%
+Time: 30 seconds
+PASS
+
+# Test stuck detection
+> irrigation test valve stuck
+Simulating stuck valve...
+Timeout at 15 seconds
+Current spike detected
+EMERGENCY STOP activated
+PASS
+```
+
+## Field Testing Protocol
+
+### Day 1: Installation Validation
+
+1. **Mount hardware**
+   - [ ] Secure mounting
+   - [ ] Solar panel south-facing
+   - [ ] Waterproof enclosure sealed
+   - [ ] Antenna vertical
+
+2. **Power verification**
+   - [ ] Battery voltage > 3.7V
+   - [ ] Solar charging active
+   - [ ] Deep sleep working
+
+3. **Sensor calibration**
+   - [ ] Water level at known height
+   - [ ] Flow sensor zero check
+   - [ ] Moisture sensor baseline
+
+4. **Communication check**
+   - [ ] Can reach house base station
+   - [ ] RSSI > -120 dBm
+   - [ ] Packet loss < 10%
+
+### Day 2-7: Continuous Operation
+
+Monitor daily:
+- [ ] Battery voltage trends
+- [ ] Sensor readings reasonable
+- [ ] Message delivery rate
+- [ ] Any error codes
+
+Log issues:
+```bash
+> irrigation log
+[Day 2, 14:35] Battery: 3.92V, Solar: 5.1V, RSSI: -78
+[Day 2, 14:50] Water level: 2.3ft (NORMAL)
+[Day 3, 06:15] Battery: 3.85V, Solar: 0.0V (Night)
+[Day 3, 14:20] Battery: 4.05V, Solar: 5.3V (Charging)
+```
+
+### Week 2: Stress Testing
+
+1. **Emergency stop test**
+   - Trigger emergency stop remotely
+   - Verify all valves close < 1 second
+   - Check alert propagation
+
+2. **Low battery test**
+   - Cover solar panel for 2 days
+   - Verify low battery behavior
+   - Confirm deep sleep activation
+
+3. **Range test**
+   - Move portable node progressively farther
+   - Document max reliable range
+   - Identify repeater locations
+
+4. **Weather test**
+   - Monitor during rain
+   - Check waterproofing
+   - Verify rain gauge accuracy
+
+## Automated Test Suite
+
+### File: `test/irrigation_tests.cpp`
+
+```cpp
+#include <unity.h>
+#include "IrrigationModule.h"
+
+void test_water_level_sensor() {
+    WaterLevelSensor sensor;
+    TEST_ASSERT_TRUE(sensor.init());
+    
+    float level = sensor.readLevel();
+    TEST_ASSERT_TRUE(level >= 0 && level <= 10);
+}
+
+void test_valve_control() {
+    ValveController valve;
+    
+    TEST_ASSERT_TRUE(valve.openValve(50));
+    delay(5000);
+    TEST_ASSERT_EQUAL(50, valve.getCurrentPosition());
+    
+    TEST_ASSERT_TRUE(valve.closeValve());
+    delay(5000);
+    TEST_ASSERT_EQUAL(0, valve.getCurrentPosition());
+}
+
+void test_command_authority() {
+    uint32_t headgate = 0x1000;
+    uint32_t valve = 0x2000;
+    
+    TEST_ASSERT_TRUE(canNodeCommand(headgate, valve));
+    TEST_ASSERT_FALSE(canNodeCommand(valve, headgate));
+}
+
+void setup() {
+    UNITY_BEGIN();
+    RUN_TEST(test_water_level_sensor);
+    RUN_TEST(test_valve_control);
+    RUN_TEST(test_command_authority);
+    UNITY_END();
+}
+```
+
+## Test Checklist Summary
+
+### Pre-Installation
+- [ ] Firmware builds without errors
+- [ ] All sensors detected
+- [ ] Role configured correctly
+- [ ] Battery charged > 80%
+- [ ] Solar panel functional
+
+### Installation
+- [ ] Physical mounting secure
+- [ ] Waterproofing verified
+- [ ] Power system working
+- [ ] Communication established
+- [ ] Sensors calibrated
+
+### Operation (First Week)
+- [ ] Daily reports received
+- [ ] Battery maintaining charge
+- [ ] Sensor readings accurate
+- [ ] Commands execute correctly
+- [ ] No error messages
+
+### Stress Testing
+- [ ] Emergency stop < 1 sec
+- [ ] Low battery handled gracefully
+- [ ] Range meets requirements
+- [ ] Weather resistant
+- [ ] 24-hour continuous operation
+
+### Sign-Off
+- [ ] All tests passed
+- [ ] Documentation complete
+- [ ] Farmer trained
+- [ ] Support contact provided
+- [ ] Warranty activated
+
+**Next**: Proceed to `06_POWER_OPTIMIZATION.md`

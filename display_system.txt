@@ -1,0 +1,318 @@
+# Display System Guide
+
+## OLED Display Integration
+
+**Display**: 128x64 OLED (SSD1306 or similar)  
+**Connection**: I2C (0x3C address)
+
+## Display Layouts by Node Type
+
+### File: `src/graphics/irrigation/IrrigationDisplay.h`
+
+```cpp
+#pragma once
+#include "graphics/Screen.h"
+#include "modules/irrigation/IrrigationTypes.h"
+
+class IrrigationDisplay {
+private:
+    OLEDDisplay* display;
+    
+public:
+    void drawNodeStatus(Irrigation::NodeType type) {
+        display->clear();
+        drawHeader(type);
+        
+        switch (type) {
+            case Irrigation::NodeType::HEADGATE_CONTROLLER:
+                drawHeadgateStatus();
+                break;
+            case Irrigation::NodeType::WATER_LEVEL_SENSOR:
+                drawWaterLevelStatus();
+                break;
+            case Irrigation::NodeType::GATE_VALVE:
+                drawValveStatus();
+                break;
+            case Irrigation::NodeType::SOIL_MOISTURE_SENSOR:
+                drawMoistureStatus();
+                break;
+            default:
+                drawGenericStatus();
+                break;
+        }
+        
+        drawFooter();
+        display->display();
+    }
+    
+private:
+    void drawHeader(Irrigation::NodeType type) {
+        display->setFont(ArialMT_Plain_10);
+        display->setTextAlignment(TEXT_ALIGN_LEFT);
+        
+        // Icon and name
+        const char* icon = getNodeIcon(type);
+        const char* name = getNodeName(type);
+        
+        display->drawString(0, 0, icon);
+        display->drawString(20, 0, name);
+        
+        // Zone info
+        char zoneStr[16];
+        snprintf(zoneStr, sizeof(zoneStr), "Z%d", nodeConfig.zoneId);
+        display->setTextAlignment(TEXT_ALIGN_RIGHT);
+        display->drawString(128, 0, zoneStr);
+        
+        // Separator
+        display->drawHorizontalLine(0, 12, 128);
+    }
+    
+    void drawWaterLevelStatus() {
+        float level = waterSensor->readLevel();
+        float maxLevel = 10.0;  // feet
+        uint8_t percent = (level / maxLevel) * 100;
+        
+        // Large level display
+        display->setFont(ArialMT_Plain_24);
+        display->setTextAlignment(TEXT_ALIGN_CENTER);
+        char levelStr[16];
+        snprintf(levelStr, sizeof(levelStr), "%.1f ft", level);
+        display->drawString(64, 20, levelStr);
+        
+        // Progress bar
+        display->setFont(ArialMT_Plain_10);
+        drawProgressBar(10, 48, 108, 10, percent);
+        
+        // Alert indicator
+        if (level > config.alertLevel) {
+            display->setTextAlignment(TEXT_ALIGN_RIGHT);
+            display->drawString(123, 48, "!");
+        }
+    }
+    
+    void drawValveStatus() {
+        uint8_t position = valve->getCurrentPosition();
+        bool isMoving = valve->isMoving();
+        
+        // Valve icon (animated if moving)
+        drawValveIcon(64, 20, position, isMoving);
+        
+        // Position percentage
+        display->setFont(ArialMT_Plain_16);
+        display->setTextAlignment(TEXT_ALIGN_CENTER);
+        char posStr[16];
+        snprintf(posStr, sizeof(posStr), "%d%%", position);
+        display->drawString(64, 45, posStr);
+        
+        // Status text
+        display->setFont(ArialMT_Plain_10);
+        const char* status = isMoving ? "MOVING" : 
+                            (position > 0 ? "OPEN" : "CLOSED");
+        display->drawString(64, 58, status);
+    }
+    
+    void drawMoistureStatus() {
+        float moisture = moistureSensor->readMoisture();
+        
+        // Moisture percentage with icon
+        display->setFont(ArialMT_Plain_24);
+        display->setTextAlignment(TEXT_ALIGN_CENTER);
+        char moistStr[16];
+        snprintf(moistStr, sizeof(moistStr), "%.0f%%", moisture);
+        display->drawString(64, 20, moistStr);
+        
+        // Status indicator
+        display->setFont(ArialMT_Plain_10);
+        const char* status;
+        if (moisture < 30) status = "DRY";
+        else if (moisture < 60) status = "MODERATE";
+        else status = "WET";
+        
+        display->drawString(64, 48, status);
+        
+        // Bar graph
+        drawProgressBar(10, 56, 108, 6, moisture);
+    }
+    
+    void drawHeadgateStatus() {
+        // System overview
+        display->setFont(ArialMT_Plain_10);
+        display->setTextAlignment(TEXT_ALIGN_LEFT);
+        
+        // Active zones
+        uint8_t activeZones = getActiveZoneCount();
+        char zoneStr[32];
+        snprintf(zoneStr, sizeof(zoneStr), "Active: %d zones", activeZones);
+        display->drawString(0, 16, zoneStr);
+        
+        // Water flow
+        float totalFlow = getTotalFlowRate();
+        char flowStr[32];
+        snprintf(flowStr, sizeof(flowStr), "Flow: %.1f GPM", totalFlow);
+        display->drawString(0, 28, flowStr);
+        
+        // Schedule status
+        display->drawString(0, 40, getScheduleStatus());
+        
+        // Next irrigation
+        display->drawString(0, 52, getNextIrrigationTime());
+    }
+    
+    void drawFooter() {
+        display->setFont(ArialMT_Plain_10);
+        display->setTextAlignment(TEXT_ALIGN_LEFT);
+        
+        // Battery indicator
+        uint8_t battery = getBatteryPercent();
+        drawBatteryIcon(0, 54, battery);
+        
+        // Signal strength
+        int8_t rssi = getLastRSSI();
+        drawSignalIcon(30, 54, rssi);
+        
+        // Time
+        char timeStr[16];
+        formatTime(timeStr, sizeof(timeStr));
+        display->setTextAlignment(TEXT_ALIGN_RIGHT);
+        display->drawString(128, 54, timeStr);
+    }
+    
+    void drawProgressBar(int16_t x, int16_t y, int16_t w, int16_t h, uint8_t percent) {
+        // Border
+        display->drawRect(x, y, w, h);
+        
+        // Fill
+        int16_t fillWidth = (w - 2) * percent / 100;
+        display->fillRect(x + 1, y + 1, fillWidth, h - 2);
+    }
+    
+    void drawBatteryIcon(int16_t x, int16_t y, uint8_t percent) {
+        // Battery outline
+        display->drawRect(x, y, 20, 10);
+        display->drawRect(x + 20, y + 3, 2, 4);
+        
+        // Battery fill
+        int16_t fillWidth = 18 * percent / 100;
+        display->fillRect(x + 1, y + 1, fillWidth, 8);
+        
+        // Percentage text
+        char percentStr[8];
+        snprintf(percentStr, sizeof(percentStr), "%d%%", percent);
+        display->drawString(x + 24, y, percentStr);
+    }
+    
+    void drawSignalIcon(int16_t x, int16_t y, int8_t rssi) {
+        // Signal bars (1-5)
+        uint8_t bars;
+        if (rssi > -70) bars = 5;
+        else if (rssi > -85) bars = 4;
+        else if (rssi > -100) bars = 3;
+        else if (rssi > -115) bars = 2;
+        else bars = 1;
+        
+        for (uint8_t i = 0; i < 5; i++) {
+            int16_t barHeight = (i + 1) * 2;
+            if (i < bars) {
+                display->fillRect(x + i * 3, y + 10 - barHeight, 2, barHeight);
+            } else {
+                display->drawRect(x + i * 3, y + 10 - barHeight, 2, barHeight);
+            }
+        }
+    }
+    
+    const char* getNodeIcon(Irrigation::NodeType type) {
+        switch (type) {
+            case Irrigation::NodeType::HEADGATE_CONTROLLER: return "GATE";
+            case Irrigation::NodeType::WATER_LEVEL_SENSOR: return "LVL";
+            case Irrigation::NodeType::SOIL_MOISTURE_SENSOR: return "SOIL";
+            case Irrigation::NodeType::GATE_VALVE: return "VALVE";
+            case Irrigation::NodeType::PUMP_CONTROLLER: return "PUMP";
+            case Irrigation::NodeType::WEATHER_STATION: return "WX";
+            default: return "NODE";
+        }
+    }
+};
+```
+
+## Screen Rotation
+
+```cpp
+// Auto-rotate based on button presses
+void handleScreenRotation() {
+    static uint8_t currentScreen = 0;
+    static uint32_t lastPress = 0;
+    
+    if (digitalRead(BUTTON_PIN) == LOW && millis() - lastPress > 500) {
+        currentScreen = (currentScreen + 1) % 4;
+        lastPress = millis();
+        
+        switch (currentScreen) {
+            case 0: drawNodeStatus(); break;
+            case 1: drawNetworkStatus(); break;
+            case 2: drawSystemHealth(); break;
+            case 3: drawScheduleView(); break;
+        }
+    }
+}
+```
+
+## Custom Icons
+
+### File: `src/graphics/irrigation/icons.h`
+
+```cpp
+#pragma once
+
+// Water drop icon (16x16)
+const uint8_t water_icon[] PROGMEM = {
+    0x00, 0x00, 0x01, 0x80, 0x03, 0xC0, 0x07, 0xE0,
+    0x0F, 0xF0, 0x1F, 0xF8, 0x3F, 0xFC, 0x7F, 0xFE,
+    0x7F, 0xFE, 0x7F, 0xFE, 0x3F, 0xFC, 0x1F, 0xF8,
+    0x0F, 0xF0, 0x07, 0xE0, 0x01, 0x80, 0x00, 0x00
+};
+
+// Valve icon (16x16)
+const uint8_t valve_icon[] PROGMEM = {
+    0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0,
+    0x1F, 0xF8, 0x3F, 0xFC, 0x7F, 0xFE, 0xFF, 0xFF,
+    0xFF, 0xFF, 0x7F, 0xFE, 0x3F, 0xFC, 0x1F, 0xF8,
+    0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0, 0x03, 0xC0
+};
+
+// Gate icon (16x16)
+const uint8_t gate_icon[] PROGMEM = {
+    0x00, 0x00, 0x7F, 0xFE, 0x40, 0x02, 0x5F, 0xFA,
+    0x50, 0x0A, 0x5F, 0xFA, 0x50, 0x0A, 0x5F, 0xFA,
+    0x50, 0x0A, 0x5F, 0xFA, 0x50, 0x0A, 0x5F, 0xFA,
+    0x40, 0x02, 0x7F, 0xFE, 0x00, 0x00, 0x00, 0x00
+};
+```
+
+## Screen Timeout
+
+```cpp
+class ScreenManager {
+private:
+    uint32_t lastActivity = 0;
+    uint32_t timeoutMs = 30000;  // 30 seconds
+    bool isOn = true;
+    
+public:
+    void update() {
+        if (millis() - lastActivity > timeoutMs && isOn) {
+            display->displayOff();
+            isOn = false;
+        }
+    }
+    
+    void wake() {
+        if (!isOn) {
+            display->displayOn();
+            isOn = true;
+        }
+        lastActivity = millis();
+    }
+};
+```
+
+**Next**: Proceed to `08_WEB_INTERFACE.md`
