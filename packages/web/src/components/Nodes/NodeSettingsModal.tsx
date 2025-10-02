@@ -48,9 +48,8 @@ export function NodeSettingsModal({ node, onClose, onSave }: NodeSettingsModalPr
   async function loadAdaptivePowerStatus() {
     setIsLoadingPowerStatus(true);
     try {
-      // Try to connect to the node's API endpoint
-      const nodeIP = getNodeIPAddress(node);
-      const response = await fetch(`http://${nodeIP}/api/v1/adaptivepower/status`);
+      // Use relative path so requests go through proxy server
+      const response = await fetch(`/api/v1/adaptivepower/status`);
       if (response.ok) {
         const status = await response.json();
         setAdaptivePowerStatus(status);
@@ -68,16 +67,9 @@ export function NodeSettingsModal({ node, onClose, onSave }: NodeSettingsModalPr
     }
   }
 
-  function getNodeIPAddress(_node: GateMeshNode): string {
-    // This would need to be implemented based on how you identify node IP addresses
-    // For now, assume local device or use a discovery mechanism
-    return window.location.hostname; // Fallback to current host
-  }
-
   async function updateAdaptivePowerMode(newMode: number) {
     try {
-      const nodeIP = getNodeIPAddress(node);
-      const response = await fetch(`http://${nodeIP}/api/v1/adaptivepower/config`, {
+      const response = await fetch(`/api/v1/adaptivepower/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `mode=${newMode}`
@@ -94,8 +86,7 @@ export function NodeSettingsModal({ node, onClose, onSave }: NodeSettingsModalPr
 
   async function forceRecalculatePower() {
     try {
-      const nodeIP = getNodeIPAddress(node);
-      const response = await fetch(`http://${nodeIP}/api/v1/adaptivepower/config`, {
+      const response = await fetch(`/api/v1/adaptivepower/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'force_recalculate=1'
