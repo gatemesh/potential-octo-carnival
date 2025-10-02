@@ -43,3 +43,6 @@ coverage/
 # Temporary folders
 tmp/
 temp/
+
+# Windows reserved name phantom file; prevents git add failures on Windows
+packages/web/NUL
