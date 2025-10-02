@@ -12,7 +12,9 @@
     "test": "pnpm -r test",
     "clean": "pnpm -r exec rm -rf dist build node_modules/.cache",
     "deploy:preview": "vercel",
-    "deploy:production": "vercel --prod"
+    "deploy:production": "vercel --prod",
+    "verify:build": "node scripts/verify-build.js",
+    "postbuild": "pnpm verify:build"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
