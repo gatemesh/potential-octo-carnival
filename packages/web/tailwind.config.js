@@ -1,0 +1,98 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        // Earth tones for agriculture theme
+        earth: {
+          50: '#faf8f3',
+          100: '#f5f1e7',
+          200: '#e8dcc7',
+          300: '#dbc7a7',
+          400: '#c8a56d',
+          500: '#b58a52',
+          600: '#9c7345',
+          700: '#7b5c3a',
+          800: '#5d4630',
+          900: '#3f3027',
+        },
+        soil: {
+          50: '#f7f3f0',
+          100: '#ede7e0',
+          200: '#d9cdc1',
+          300: '#c5b3a2',
+          400: '#a8917b',
+          500: '#8b7563',
+          600: '#725e50',
+          700: '#59493f',
+          800: '#40362f',
+          900: '#2b2420',
+        },
+        // Sage green as primary accent
+        sage: {
+          50: '#f6f8f4',
+          100: '#e9efe3',
+          200: '#d3dfc7',
+          300: '#b3c79f',
+          400: '#8faa73',
+          500: '#6d8c51',
+          600: '#547039',
+          700: '#425830',
+          800: '#364729',
+          900: '#2d3b24',
+        },
+        // Status colors (earth-toned)
+        success: {
+          50: '#f0f8f0',
+          100: '#d9f0d9',
+          200: '#b3e0b3',
+          300: '#80cc80',
+          400: '#4db84d',
+          500: '#2d9c2d',
+          600: '#1f7a1f',
+          700: '#185c18',
+          800: '#144714',
+          900: '#0f350f',
+        },
+        warning: {
+          50: '#fef8f0',
+          100: '#fcefd9',
+          200: '#f8ddb3',
+          300: '#f3c680',
+          400: '#eca94d',
+          500: '#d68910',
+          600: '#b06d08',
+          700: '#8a5306',
+          800: '#6b4005',
+          900: '#4f2e03',
+        },
+        danger: {
+          50: '#fef5f3',
+          100: '#fce8e3',
+          200: '#f8d0c7',
+          300: '#f1afa0',
+          400: '#e88870',
+          500: '#d85d3d',
+          600: '#b53d1f',
+          700: '#8f2f17',
+          800: '#6f2513',
+          900: '#511c0f',
+        },
+      },
+      fontFamily: {
+        sans: ['Inter var', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Inter var', 'Inter', 'system-ui', 'sans-serif'],
+      },
+      boxShadow: {
+        'soft': '0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06)',
+        'medium': '0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06)',
+        'large': '0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08)',
+      },
+    },
+  },
+  plugins: [],
+}
