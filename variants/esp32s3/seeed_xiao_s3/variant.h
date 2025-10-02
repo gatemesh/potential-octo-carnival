@@ -33,12 +33,20 @@ L76K GPS Module Information : https://www.seeedstudio.com/L76K-GNSS-Module-for-S
 #define LED_PIN 48
 #define LED_STATE_ON 1 // State when LED is lit
 
-#define BUTTON_PIN 21 // This is the Program Button
+// Seeed XIAO Expansion Board button is on D1/A1 (GPIO2)
+// User requested GPIO2 for button functionality
+#define BUTTON_PIN 2
 #define BUTTON_NEED_PULLUP
 
 #define BATTERY_PIN -1
 #define ADC_CHANNEL ADC1_GPIO1_CHANNEL
 #define BATTERY_SENSE_RESOLUTION_BITS 12
+
+// Real-Time Clock on Seeed Expansion Board
+// Uses PCF8563T at I2C address 0x51 (7-bit address)
+// Connected to D4_SDA/D5_SCL (GPIO5/GPIO6)
+// See expansion_board.h for complete expansion board documentation
+#define PCF8563_RTC 0x51
 
 /*Warning:
     https://www.seeedstudio.com/L76K-GNSS-Module-for-Seeed-Studio-XIAO-p-5864.html
@@ -54,7 +62,8 @@ L76K GPS Module Information : https://www.seeedstudio.com/L76K-GNSS-Module-for-S
 #define GPS_THREAD_INTERVAL 50
 #define PIN_SERIAL1_RX PIN_GPS_TX
 #define PIN_SERIAL1_TX PIN_GPS_RX
-#define PIN_GPS_STANDBY 1
+// PIN_GPS_STANDBY removed - GPIO1 is used for button D1/A1 on expansion board
+// #define PIN_GPS_STANDBY 1
 #endif
 
 // XIAO S3 Expansion board  has 1.3 inch OLED Screen

@@ -13,7 +13,7 @@ class ScanI2C
         SCREEN_UNKNOWN, // has the same address as the two above but does not respond to the same commands
         SCREEN_ST7567,
         RTC_RV3028,
-        RTC_PCF8563,
+  RTC_PCF8563,
         CARDKB,
         TDECKKB,
         BBQ10KB,

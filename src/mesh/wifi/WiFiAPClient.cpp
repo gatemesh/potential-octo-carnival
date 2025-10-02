@@ -86,10 +86,10 @@ static void onNetworkConnected()
         LOG_INFO("Start network services");
 
         // start mdns
-        if (!MDNS.begin("Meshtastic")) {
+        if (!MDNS.begin("GateMesh")) {
             LOG_ERROR("Error setting up mDNS responder!");
         } else {
-            LOG_INFO("mDNS Host: Meshtastic.local");
+            LOG_INFO("mDNS Host: GateMesh.local");
             MDNS.addService("meshtastic", "tcp", SERVER_API_DEFAULT_PORT);
 // ESPmDNS (ESP32) and SimpleMDNS (RP2040) have slightly different APIs for adding TXT records
 #ifdef ARCH_ESP32
@@ -124,7 +124,7 @@ static void onNetworkConnected()
             }
             syslog.server(serverAddr, serverPort);
             syslog.deviceHostname(getDeviceName());
-            syslog.appName("Meshtastic");
+            syslog.appName("GateMesh");
             syslog.defaultPriority(LOGLEVEL_USER);
             syslog.enable();
         }

@@ -100,6 +100,11 @@ void TwoButton::setWiring(uint8_t whichButton, uint8_t pin, bool internalPullup)
     buttons[whichButton].activeLogic = LOW; // Unimplemented
 
     pinMode(buttons[whichButton].pin, internalPullup ? INPUT_PULLUP : INPUT);
+    int pinState = digitalRead(buttons[whichButton].pin);
+    LOG_INFO("Button wiring: whichButton=%d, pin=%d, internalPullup=%d, initial pinState=%d", whichButton, pin, internalPullup, pinState);
+    if (internalPullup && pinState != HIGH) {
+        LOG_WARN("Button pin %d is not HIGH after INPUT_PULLUP. Possible hardware or code conflict.", pin);
+    }
 }
 
 void TwoButton::setTiming(uint8_t whichButton, uint32_t debounceMs, uint32_t longpressMs)
@@ -114,7 +119,10 @@ void TwoButton::setTiming(uint8_t whichButton, uint32_t debounceMs, uint32_t lon
 void TwoButton::setHandlerDown(uint8_t whichButton, Callback onDown)
 {
     assert(whichButton < 2);
-    buttons[whichButton].onDown = onDown;
+    buttons[whichButton].onDown = [onDown, whichButton]() {
+        LOG_INFO("Button %d pressed!", whichButton);
+        if (onDown) onDown();
+    };
 }
 
 // Set what should happen when a button becomes unpressed
@@ -149,6 +157,7 @@ void TwoButton::isrPrimary()
     if (!isrRunning) {
         isrRunning = true;
         TwoButton *b = TwoButton::getInstance();
+        LOG_INFO("ISR: Button 0 triggered, pin state: %d", digitalRead(b->buttons[0].pin));
         if (b->buttons[0].state == State::REST) {
             b->buttons[0].state = State::IRQ;
             b->buttons[0].irqAtMillis = millis();
@@ -233,15 +242,18 @@ int32_t TwoButton::runOnce()
             uint32_t length = millis() - buttons[i].irqAtMillis;
 
             // If button released since last thread tick,
-            if (digitalRead(buttons[i].pin) != buttons[i].activeLogic) {
+            int pinState = digitalRead(buttons[i].pin);
+            int analogValue = analogRead(buttons[i].pin);
+            LOG_INFO("Polling: Button %d pin state: %d, analog value: %d, activeLogic: %d", i, pinState, analogValue, buttons[i].activeLogic);
+            // Use analog threshold for press detection (adjust threshold as needed)
+            const int analogThreshold = 2000; // Example threshold for ESP32 ADC (0-4095)
+            bool pressed = (analogValue < analogThreshold);
+            if (pressed || pinState != buttons[i].activeLogic) {
                 buttons[i].onUp();              // Run callback: press has ended (possible release of a hold)
                 buttons[i].state = State::REST; // Mark that the button has reset
                 if (length > buttons[i].debounceLength && length < buttons[i].longpressLength) // If too short for longpress,
                     buttons[i].onShortPress();                                                 // Run callback: short press
-            }
-
-            // If button not yet released
-            else {
+            } else {
                 awaitingRelease = true; // Mark that polling-for-release should continue
                 if (length >= buttons[i].longpressLength) {
                     // Run callback: long press (once)
@@ -257,13 +269,17 @@ int32_t TwoButton::runOnce()
         // Just waiting for release
         case POLLING_FIRED:
             // Release detected
-            if (digitalRead(buttons[i].pin) != buttons[i].activeLogic) {
+            int pinState = digitalRead(buttons[i].pin);
+            int analogValue = analogRead(buttons[i].pin);
+            LOG_INFO("Polling (long): Button %d pin state: %d, analog value: %d, activeLogic: %d", i, pinState, analogValue, buttons[i].activeLogic);
+            const int analogThreshold = 2000;
+            bool pressed = (analogValue < analogThreshold);
+            if (pressed || pinState != buttons[i].activeLogic) {
                 buttons[i].state = State::REST;
                 buttons[i].onUp(); // Callback: release of hold (in this case: *after* longpress has fired)
-            }
-            // Not yet released, keep polling
-            else
+            } else {
                 awaitingRelease = true;
+            }
             break;
         }
     }

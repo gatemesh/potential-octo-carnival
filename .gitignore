@@ -70,3 +70,8 @@ WAVE_0_COMPLETION_REPORT.md
 # Build logs
 build*.log
 *.log
+
+# GateMesh Web Client (separate project)
+gatemesh-web/
+
+.fake

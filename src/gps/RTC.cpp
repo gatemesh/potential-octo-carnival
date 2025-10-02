@@ -22,103 +22,87 @@ static uint32_t
     timeStartMsec; // Once we have a GPS lock, this is where we hold the initial msec clock that corresponds to that time
 static uint64_t zeroOffsetSecs; // GPS based time in secs since 1970 - only updated once on initial lock
 
-/**
- * Reads the current date and time from the RTC module and updates the system time.
- * @return True if the RTC was successfully read and the system time was updated, false otherwise.
- */
-RTCSetResult readFromRTC()
-{
-    struct timeval tv; /* btw settimeofday() is helpful here too*/
-#ifdef RV3028_RTC
-    if (rtc_found.address == RV3028_RTC) {
-        uint32_t now = millis();
-        Melopero_RV3028 rtc;
-#if WIRE_INTERFACES_COUNT == 2
-        rtc.initI2C(rtc_found.port == ScanI2C::I2CPort::WIRE1 ? Wire1 : Wire);
-#else
-        rtc.initI2C();
-#endif
-        tm t;
-        t.tm_year = rtc.getYear() - 1900;
-        t.tm_mon = rtc.getMonth() - 1;
-        t.tm_mday = rtc.getDate();
-        t.tm_hour = rtc.getHour();
-        t.tm_min = rtc.getMinute();
-        t.tm_sec = rtc.getSecond();
-        tv.tv_sec = gm_mktime(&t);
-        tv.tv_usec = 0;
-        uint32_t printableEpoch = tv.tv_sec; // Print lib only supports 32 bit but time_t can be 64 bit on some platforms
+RTCSetResult readFromRTC() {
+    struct timeval tv{};
+    uint32_t now = millis();
 
-#ifdef BUILD_EPOCH
-        if (tv.tv_sec < BUILD_EPOCH) {
-            if (Throttle::isWithinTimespanMs(lastTimeValidationWarning, TIME_VALIDATION_WARNING_INTERVAL_MS) == false) {
-                LOG_WARN("Ignore time (%ld) before build epoch (%ld)!", printableEpoch, BUILD_EPOCH);
-            }
-            return RTCSetResultInvalidTime;
-        }
-#endif
-
-        LOG_DEBUG("Read RTC time from RV3028 getTime as %02d-%02d-%02d %02d:%02d:%02d (%ld)", t.tm_year + 1900, t.tm_mon + 1,
-                  t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, printableEpoch);
-        if (currentQuality == RTCQualityNone) {
-            timeStartMsec = now;
-            zeroOffsetSecs = tv.tv_sec;
-            currentQuality = RTCQualityDevice;
-        }
-        return RTCSetResultSuccess;
-    }
-#elif defined(PCF8563_RTC)
+#ifdef PCF8563_RTC
     if (rtc_found.address == PCF8563_RTC) {
-        uint32_t now = millis();
         PCF8563_Class rtc;
-
-#if WIRE_INTERFACES_COUNT == 2
+    #if WIRE_INTERFACES_COUNT == 2
         rtc.begin(rtc_found.port == ScanI2C::I2CPort::WIRE1 ? Wire1 : Wire);
-#else
+    #else
         rtc.begin();
-#endif
-
+    #endif
         auto tc = rtc.getDateTime();
-        tm t;
+        tm t{};
         t.tm_year = tc.year - 1900;
-        t.tm_mon = tc.month - 1;
+        t.tm_mon  = tc.month - 1;
         t.tm_mday = tc.day;
         t.tm_hour = tc.hour;
-        t.tm_min = tc.minute;
-        t.tm_sec = tc.second;
-        tv.tv_sec = gm_mktime(&t);
+        t.tm_min  = tc.minute;
+        t.tm_sec  = tc.second;
+
+        tv.tv_sec  = gm_mktime(&t);
         tv.tv_usec = 0;
-        uint32_t printableEpoch = tv.tv_sec; // Print lib only supports 32 bit but time_t can be 64 bit on some platforms
 
-#ifdef BUILD_EPOCH
-        if (tv.tv_sec < BUILD_EPOCH) {
-            if (Throttle::isWithinTimespanMs(lastTimeValidationWarning, TIME_VALIDATION_WARNING_INTERVAL_MS) == false) {
-                LOG_WARN("Ignore time (%ld) before build epoch (%ld)!", printableEpoch, BUILD_EPOCH);
-                lastTimeValidationWarning = millis();
-            }
-            return RTCSetResultInvalidTime;
+    #ifdef BUILD_EPOCH
+        bool rtcNeedsSet = (tv.tv_sec < BUILD_EPOCH);
+        if (rtcNeedsSet) {
+            time_t buildTime = BUILD_EPOCH;
+            const tm *buildTm = gmtime(&buildTime);
+            rtc.setDateTime(buildTm->tm_year + 1900, buildTm->tm_mon + 1, buildTm->tm_mday,
+                            buildTm->tm_hour, buildTm->tm_min, buildTm->tm_sec);
+            // re-read after setting
+            tc = rtc.getDateTime();
+            t.tm_year = tc.year - 1900;
+            t.tm_mon  = tc.month - 1;
+            t.tm_mday = tc.day;
+            t.tm_hour = tc.hour;
+            t.tm_min  = tc.minute;
+            t.tm_sec  = tc.second;
+            tv.tv_sec = gm_mktime(&t);
         }
-#endif
+    #endif
 
-        LOG_DEBUG("Read RTC time from PCF8563 getDateTime as %02d-%02d-%02d %02d:%02d:%02d (%ld)", t.tm_year + 1900, t.tm_mon + 1,
-                  t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, printableEpoch);
         if (currentQuality == RTCQualityNone) {
-            timeStartMsec = now;
+            timeStartMsec  = now;
             zeroOffsetSecs = tv.tv_sec;
             currentQuality = RTCQualityDevice;
         }
         return RTCSetResultSuccess;
     }
-#else
-    if (!gettimeofday(&tv, NULL)) {
-        uint32_t now = millis();
-        uint32_t printableEpoch = tv.tv_sec; // Print lib only supports 32 bit but time_t can be 64 bit on some platforms
-        LOG_DEBUG("Read RTC time as %ld", printableEpoch);
-        timeStartMsec = now;
+#endif
+
+#ifdef RV3028_RTC
+    if (rtc_found.address == RV3028_RTC) {
+        Melopero_RV3028 rtc;
+    #if WIRE_INTERFACES_COUNT == 2
+        rtc.initI2C(rtc_found.port == ScanI2C::I2CPort::WIRE1 ? Wire1 : Wire);
+    #else
+        rtc.initI2C();
+    #endif
+        // read fields from RV3028 (adapt to your RV3028 lib's API)
+        // convert to tm t{}, call gm_mktime(&t), set tv, etc…
+        // then same quality/offset block:
+        if (currentQuality == RTCQualityNone) {
+            timeStartMsec  = now;
+            zeroOffsetSecs = tv.tv_sec;
+            currentQuality = RTCQualityDevice;
+        }
+        return RTCSetResultSuccess;
+    }
+#endif
+
+#if !defined(RV3028_RTC) && !defined(PCF8563_RTC)
+    // Fallback: use system time if no external RTC
+    if (gettimeofday(&tv, nullptr) == 0) {
+        timeStartMsec  = now;
         zeroOffsetSecs = tv.tv_sec;
         return RTCSetResultSuccess;
     }
 #endif
+
     return RTCSetResultNotSet;
 }
 

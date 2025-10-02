@@ -73,7 +73,7 @@ ScanI2C::DeviceType ScanI2CTwoWire::probeOLED(ScanI2C::DeviceAddress addr) const
             o_probe = SCREEN_SSD1306; // SSD1306
         }
         c++;
-    } while ((r != r_prev) && (c < 4));
+    } while ((r != r_prev) && (c < 10));
     LOG_DEBUG("0x%x subtype probed in %i tries ", r, c);
 
     return o_probe;
@@ -152,10 +152,27 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
     // 0x7C-0x7F Reserved for future purposes
 
     for (addr.address = 8; addr.address < 120; addr.address++) {
-        if (asize != 0) {
+        // Force scan specific RTC addresses when defined
+        bool forceRTCScan = false;
+#ifdef PCF8563_RTC
+        forceRTCScan = (addr.address == PCF8563_RTC);
+#endif
+#ifdef RV3028_RTC
+        forceRTCScan = forceRTCScan || (addr.address == RV3028_RTC);
+#endif
+        
+        if (asize != 0 && !forceRTCScan) {
             if (!in_array(address, asize, (uint8_t)addr.address))
                 continue;
             LOG_DEBUG("Scan address 0x%x", (uint8_t)addr.address);
+#ifdef PCF8563_RTC
+        } else if (addr.address == PCF8563_RTC) {
+            LOG_DEBUG("Scan address 0x%x (forced PCF8563 RTC scan)", (uint8_t)addr.address);
+#endif
+#ifdef RV3028_RTC
+        } else if (addr.address == RV3028_RTC) {
+            LOG_DEBUG("Scan address 0x%x (forced RV3028 RTC scan)", (uint8_t)addr.address);
+#endif
         }
         i2cBus->beginTransmission(addr.address);
 #ifdef ARCH_PORTDUINO
@@ -173,6 +190,12 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
 #endif
         type = NONE;
         if (err == 0) {
+            LOG_DEBUG("Device found at address 0x%02x, checking switch cases", (uint8_t)addr.address);
+#ifdef PCF8563_RTC
+            LOG_DEBUG("PCF8563_RTC is defined as 0x%02x", PCF8563_RTC);
+#else
+            LOG_DEBUG("PCF8563_RTC is NOT defined!");
+#endif
             switch (addr.address) {
             case SSD1306_ADDRESS:
                 type = probeOLED(addr);
@@ -195,7 +218,11 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
 #endif
 
 #ifdef PCF8563_RTC
-                SCAN_SIMPLE_CASE(PCF8563_RTC, RTC_PCF8563, "PCF8563", (uint8_t)addr.address)
+            case PCF8563_RTC:
+                LOG_DEBUG("PCF8563 case triggered for address 0x%02x, PCF8563_RTC=0x%02x", (uint8_t)addr.address, PCF8563_RTC);
+                type = RTC_PCF8563;
+                logFoundDevice("PCF8563", (uint8_t)addr.address);
+                break;
 #endif
 
             case CARDKB_ADDR:

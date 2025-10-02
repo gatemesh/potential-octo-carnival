@@ -44,7 +44,6 @@ PCA9557 io(0x18, &Wire);
 
 #ifdef ARCH_ESP32
 #include "freertosinc.h"
-#include "esp_task_wdt.h"
 #if !GATEMESH_EXCLUDE_WEBSERVER
 #include "mesh/http/WebServer.h"
 #endif
@@ -870,7 +869,6 @@ void setup()
 #endif
 
     LOG_INFO("CHECKPOINT 4: Before SPI init");
-    LOG_DEBUG("SPI pins - SCK:%d, MISO:%d, MOSI:%d, CS:%d", LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
 
     // Init our SPI controller (must be before screen and lora)
 #ifdef ARCH_RP2040
@@ -900,14 +898,9 @@ void setup()
     LOG_DEBUG("SPI1.begin(SCK=%d, MISO=%d, MOSI=%d, NSS=%d)", LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
     SPI1.setFrequency(4000000);
 #else
-    LOG_DEBUG("About to call SPI.begin...");
-    esp_task_wdt_reset(); // Feed watchdog before SPI init
-    delay(10);
     SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
-    LOG_DEBUG("SPI.begin completed - SCK=%d, MISO=%d, MOSI=%d, NSS=%d", LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
-    esp_task_wdt_reset(); // Feed watchdog after SPI init
+    LOG_DEBUG("SPI.begin(SCK=%d, MISO=%d, MOSI=%d, NSS=%d)", LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
     SPI.setFrequency(4000000);
-    LOG_DEBUG("SPI frequency set to 4MHz");
 #endif
 #endif
 
@@ -1115,13 +1108,10 @@ void setup()
 
 #if defined(BUTTON_PIN)
 #if defined(USERPREFS_BUTTON_PIN)
-    // Don't use GPIO0 (boot button) - fall back to BUTTON_PIN if config has 0
-    int _pinNum = (config.device.button_gpio && config.device.button_gpio != 0) ? config.device.button_gpio : USERPREFS_BUTTON_PIN;
+    int _pinNum = config.device.button_gpio ? config.device.button_gpio : USERPREFS_BUTTON_PIN;
 #else
-    // Don't use GPIO0 (boot button) - fall back to BUTTON_PIN if config has 0
-    int _pinNum = (config.device.button_gpio && config.device.button_gpio != 0) ? config.device.button_gpio : BUTTON_PIN;
+    int _pinNum = config.device.button_gpio ? config.device.button_gpio : BUTTON_PIN;
 #endif
-    LOG_INFO("Initializing user button on GPIO%d", _pinNum);
 #ifndef BUTTON_ACTIVE_LOW
 #define BUTTON_ACTIVE_LOW true
 #endif

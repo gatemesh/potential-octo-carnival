@@ -1,0 +1,1414 @@
+# GateMesh Web Client - First Draft Implementation Guide
+
+**Based on**: Meshtastic Web (https://github.com/meshtastic/web)  
+**Target**: React + TypeScript web client for GateMesh irrigation nodes  
+**Connection**: Web Serial API for USB configuration
+
+---
+
+## Project Structure
+
+```
+gatemesh-web/
+├── packages/
+│   ├── web/                      # Main web client
+│   │   ├── src/
+│   │   │   ├── App.tsx          # Root component
+│   │   │   ├── main.tsx         # Entry point
+│   │   │   ├── components/
+│   │   │   │   ├── Connect/
+│   │   │   │   │   └── SerialConnect.tsx
+│   │   │   │   ├── Dashboard/
+│   │   │   │   │   ├── IrrigationDashboard.tsx
+│   │   │   │   │   ├── WaterLevelCard.tsx
+│   │   │   │   │   ├── ValveControlCard.tsx
+│   │   │   │   │   ├── ZoneStatusCard.tsx
+│   │   │   │   │   └── PowerStatusCard.tsx
+│   │   │   │   ├── Config/
+│   │   │   │   │   ├── NodeRoleSelector.tsx
+│   │   │   │   │   ├── ZoneAssignment.tsx
+│   │   │   │   │   ├── SensorCalibration.tsx
+│   │   │   │   │   └── PowerSettings.tsx
+│   │   │   │   ├── Monitor/
+│   │   │   │   │   ├── RealTimeGraph.tsx
+│   │   │   │   │   ├── AlertsList.tsx
+│   │   │   │   │   └── NetworkMap.tsx
+│   │   │   │   └── Layout/
+│   │   │   │       ├── Sidebar.tsx
+│   │   │   │       ├── Header.tsx
+│   │   │   │       └── Footer.tsx
+│   │   │   ├── hooks/
+│   │   │   │   ├── useSerialConnection.ts
+│   │   │   │   ├── useNodeData.ts
+│   │   │   │   ├── useWaterLevel.ts
+│   │   │   │   └── useValveControl.ts
+│   │   │   ├── store/
+│   │   │   │   ├── nodeStore.ts
+│   │   │   │   ├── irrigationStore.ts
+│   │   │   │   └── connectionStore.ts
+│   │   │   ├── types/
+│   │   │   │   ├── irrigation.ts
+│   │   │   │   ├── nodes.ts
+│   │   │   │   └── serial.ts
+│   │   │   └── utils/
+│   │   │       ├── serialParser.ts
+│   │   │       ├── protobufHelper.ts
+│   │   │       └── dataFormatter.ts
+│   │   ├── public/
+│   │   │   ├── index.html
+│   │   │   └── gatemesh-logo.svg
+│   │   ├── package.json
+│   │   ├── vite.config.ts
+│   │   └── tsconfig.json
+│   ├── core/                     # Core GateMesh functionality
+│   │   └── src/
+│   │       ├── client.ts
+│   │       ├── connection.ts
+│   │       └── types.ts
+│   └── transport-web-serial/     # Web Serial transport
+│       └── src/
+│           └── serial.ts
+├── pnpm-workspace.yaml
+├── package.json
+└── README.md
+```
+
+---
+
+## Phase 1: Minimal Setup & Connection
+
+### 1.1 Initialize Project
+
+```bash
+# Create project
+mkdir gatemesh-web && cd gatemesh-web
+
+# Initialize pnpm workspace
+pnpm init
+
+# Create workspace file
+echo "packages:" > pnpm-workspace.yaml
+echo "  - 'packages/*'" >> pnpm-workspace.yaml
+
+# Create packages
+mkdir -p packages/web/src
+mkdir -p packages/core/src
+mkdir -p packages/transport-web-serial/src
+```
+
+### 1.2 Root package.json
+
+```json
+{
+  "name": "gatemesh-web-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0"
+  }
+}
+```
+
+### 1.3 Web Client package.json
+
+**File**: `packages/web/package.json`
+
+```json
+{
+  "name": "@gatemesh/web",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext ts,tsx"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.4.0",
+    "recharts": "^2.10.0",
+    "lucide-react": "^0.300.0",
+    "@gatemesh/core": "workspace:*",
+    "@gatemesh/transport-web-serial": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.0",
+    "eslint": "^8.0.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0"
+  }
+}
+```
+
+### 1.4 Vite Config
+
+**File**: `packages/web/vite.config.ts`
+
+```typescript
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    port: 3000,
+    open: true,
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+  },
+});
+```
+
+### 1.5 TypeScript Config
+
+**File**: `packages/web/tsconfig.json`
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+```
+
+---
+
+## Phase 2: Core Types & State Management
+
+### 2.1 Irrigation Types
+
+**File**: `packages/web/src/types/irrigation.ts`
+
+```typescript
+export enum NodeType {
+  UNDEFINED = 0,
+  HEADGATE_CONTROLLER = 1,
+  PUMP_CONTROLLER = 2,
+  SECTION_CONTROLLER = 3,
+  WATER_LEVEL_SENSOR = 10,
+  FLOW_SENSOR = 11,
+  SOIL_MOISTURE_SENSOR = 12,
+  PRESSURE_SENSOR = 13,
+  WEATHER_STATION = 14,
+  GATE_VALVE = 20,
+  VARIABLE_VALVE = 21,
+  PUMP_RELAY = 22,
+  LATERAL_VALVE = 23,
+}
+
+export enum IrrigationState {
+  OFFLINE = 0,
+  IDLE = 1,
+  ACTIVE = 2,
+  IRRIGATING = 3,
+  ERROR = 4,
+  EMERGENCY_STOP = 5,
+}
+
+export interface IrrigationNode {
+  nodeId: number;
+  type: NodeType;
+  zoneId: number;
+  fieldId: number;
+  locationName: string;
+  state: IrrigationState;
+  lastSeen: number;
+  battery: number;
+  solar: number;
+  rssi: number;
+}
+
+export interface WaterLevelData {
+  nodeId: number;
+  level: number;          // feet
+  timestamp: number;
+  alertTriggered: boolean;
+  temperature?: number;   // celsius
+}
+
+export interface ValveStatus {
+  nodeId: number;
+  position: number;       // 0-100%
+  isMoving: boolean;
+  state: 'open' | 'closed' | 'moving' | 'error';
+  cycleCount: number;
+  lastOperation: number;
+}
+
+export interface ZoneStatus {
+  zoneId: number;
+  name: string;
+  isIrrigating: boolean;
+  valveNodes: number[];
+  sensorNodes: number[];
+  waterUsedGallons: number;
+  startTime?: number;
+  duration?: number;
+}
+```
+
+### 2.2 Node Store (Zustand)
+
+**File**: `packages/web/src/store/nodeStore.ts`
+
+```typescript
+import { create } from 'zustand';
+import { IrrigationNode, NodeType } from '@/types/irrigation';
+
+interface NodeStore {
+  nodes: Map<number, IrrigationNode>;
+  selectedNodeId: number | null;
+  
+  // Actions
+  addNode: (node: IrrigationNode) => void;
+  updateNode: (nodeId: number, updates: Partial<IrrigationNode>) => void;
+  removeNode: (nodeId: number) => void;
+  selectNode: (nodeId: number | null) => void;
+  getNode: (nodeId: number) => IrrigationNode | undefined;
+  getNodesByType: (type: NodeType) => IrrigationNode[];
+  clear: () => void;
+}
+
+export const useNodeStore = create<NodeStore>((set, get) => ({
+  nodes: new Map(),
+  selectedNodeId: null,
+  
+  addNode: (node) =>
+    set((state) => {
+      const newNodes = new Map(state.nodes);
+      newNodes.set(node.nodeId, node);
+      return { nodes: newNodes };
+    }),
+  
+  updateNode: (nodeId, updates) =>
+    set((state) => {
+      const newNodes = new Map(state.nodes);
+      const existing = newNodes.get(nodeId);
+      if (existing) {
+        newNodes.set(nodeId, { ...existing, ...updates });
+      }
+      return { nodes: newNodes };
+    }),
+  
+  removeNode: (nodeId) =>
+    set((state) => {
+      const newNodes = new Map(state.nodes);
+      newNodes.delete(nodeId);
+      return { nodes: newNodes };
+    }),
+  
+  selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
+  
+  getNode: (nodeId) => get().nodes.get(nodeId),
+  
+  getNodesByType: (type) =>
+    Array.from(get().nodes.values()).filter((node) => node.type === type),
+  
+  clear: () => set({ nodes: new Map(), selectedNodeId: null }),
+}));
+```
+
+### 2.3 Irrigation Store
+
+**File**: `packages/web/src/store/irrigationStore.ts`
+
+```typescript
+import { create } from 'zustand';
+import { WaterLevelData, ValveStatus, ZoneStatus } from '@/types/irrigation';
+
+interface IrrigationStore {
+  waterLevels: Map<number, WaterLevelData>;
+  valveStatuses: Map<number, ValveStatus>;
+  zones: Map<number, ZoneStatus>;
+  alerts: Alert[];
+  
+  // Actions
+  updateWaterLevel: (data: WaterLevelData) => void;
+  updateValveStatus: (status: ValveStatus) => void;
+  updateZoneStatus: (status: ZoneStatus) => void;
+  addAlert: (alert: Alert) => void;
+  clearAlerts: () => void;
+}
+
+interface Alert {
+  id: string;
+  type: 'warning' | 'error' | 'info';
+  message: string;
+  nodeId?: number;
+  timestamp: number;
+}
+
+export const useIrrigationStore = create<IrrigationStore>((set) => ({
+  waterLevels: new Map(),
+  valveStatuses: new Map(),
+  zones: new Map(),
+  alerts: [],
+  
+  updateWaterLevel: (data) =>
+    set((state) => {
+      const newLevels = new Map(state.waterLevels);
+      newLevels.set(data.nodeId, data);
+      return { waterLevels: newLevels };
+    }),
+  
+  updateValveStatus: (status) =>
+    set((state) => {
+      const newStatuses = new Map(state.valveStatuses);
+      newStatuses.set(status.nodeId, status);
+      return { valveStatuses: newStatuses };
+    }),
+  
+  updateZoneStatus: (status) =>
+    set((state) => {
+      const newZones = new Map(state.zones);
+      newZones.set(status.zoneId, status);
+      return { zones: newZones };
+    }),
+  
+  addAlert: (alert) =>
+    set((state) => ({
+      alerts: [alert, ...state.alerts].slice(0, 50), // Keep last 50
+    })),
+  
+  clearAlerts: () => set({ alerts: [] }),
+}));
+```
+
+---
+
+## Phase 3: Web Serial Connection
+
+### 3.1 Serial Connection Hook
+
+**File**: `packages/web/src/hooks/useSerialConnection.ts`
+
+```typescript
+import { useState, useCallback, useEffect } from 'react';
+
+interface SerialConnectionOptions {
+  baudRate?: number;
+  onData?: (data: string) => void;
+  onError?: (error: Error) => void;
+}
+
+export function useSerialConnection(options: SerialConnectionOptions = {}) {
+  const { baudRate = 115200, onData, onError } = options;
+  
+  const [port, setPort] = useState<SerialPort | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isReading, setIsReading] = useState(false);
+  
+  const connect = useCallback(async () => {
+    try {
+      // Request serial port
+      const selectedPort = await navigator.serial.requestPort();
+      
+      // Open port
+      await selectedPort.open({ baudRate });
+      
+      setPort(selectedPort);
+      setIsConnected(true);
+      
+      // Start reading
+      readLoop(selectedPort);
+      
+      console.log('Connected to serial port');
+    } catch (error) {
+      console.error('Failed to connect:', error);
+      onError?.(error as Error);
+    }
+  }, [baudRate, onError]);
+  
+  const disconnect = useCallback(async () => {
+    if (port) {
+      try {
+        await port.close();
+        setPort(null);
+        setIsConnected(false);
+        setIsReading(false);
+        console.log('Disconnected from serial port');
+      } catch (error) {
+        console.error('Failed to disconnect:', error);
+        onError?.(error as Error);
+      }
+    }
+  }, [port, onError]);
+  
+  const write = useCallback(async (data: string) => {
+    if (!port || !isConnected) {
+      throw new Error('Not connected');
+    }
+    
+    const writer = port.writable.getWriter();
+    const encoder = new TextEncoder();
+    await writer.write(encoder.encode(data + '\n'));
+    writer.releaseLock();
+  }, [port, isConnected]);
+  
+  const readLoop = useCallback(async (serialPort: SerialPort) => {
+    setIsReading(true);
+    const decoder = new TextDecoder();
+    let buffer = '';
+    
+    try {
+      while (serialPort.readable) {
+        const reader = serialPort.readable.getReader();
+        
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            
+            // Process complete lines
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            
+            for (const line of lines) {
+              if (line.trim()) {
+                onData?.(line.trim());
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      }
+    } catch (error) {
+      console.error('Read error:', error);
+      onError?.(error as Error);
+    } finally {
+      setIsReading(false);
+    }
+  }, [onData, onError]);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (port) {
+        port.close().catch(console.error);
+      }
+    };
+  }, [port]);
+  
+  return {
+    isConnected,
+    isReading,
+    connect,
+    disconnect,
+    write,
+  };
+}
+```
+
+### 3.2 Serial Data Parser
+
+**File**: `packages/web/src/utils/serialParser.ts`
+
+```typescript
+import { IrrigationNode, NodeType, IrrigationState } from '@/types/irrigation';
+
+export function parseSerialLine(line: string): ParsedData | null {
+  // Parse irrigation status messages
+  // Example: "INFO | Irrigation status: Water level: 2.45ft, Battery: 78%"
+  
+  try {
+    // Remove log level prefix
+    const cleanLine = line.replace(/^(INFO|DEBUG|WARN|ERROR)\s*\|\s*/, '');
+    
+    // Parse water level
+    const waterMatch = cleanLine.match(/Water level:\s*([\d.]+)\s*ft/);
+    if (waterMatch) {
+      return {
+        type: 'water_level',
+        value: parseFloat(waterMatch[1]),
+        timestamp: Date.now(),
+      };
+    }
+    
+    // Parse battery
+    const batteryMatch = cleanLine.match(/Battery:\s*([\d.]+)V\s*\((\d+)%\)/);
+    if (batteryMatch) {
+      return {
+        type: 'battery',
+        voltage: parseFloat(batteryMatch[1]),
+        percent: parseInt(batteryMatch[2]),
+        timestamp: Date.now(),
+      };
+    }
+    
+    // Parse node status
+    if (cleanLine.includes('Node:')) {
+      const nodeMatch = cleanLine.match(/Node:\s*(\w+)/);
+      const zoneMatch = cleanLine.match(/Zone:\s*(\d+)/);
+      
+      if (nodeMatch && zoneMatch) {
+        return {
+          type: 'node_status',
+          nodeType: parseNodeType(nodeMatch[1]),
+          zoneId: parseInt(zoneMatch[1]),
+          timestamp: Date.now(),
+        };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Parse error:', error);
+    return null;
+  }
+}
+
+function parseNodeType(typeStr: string): NodeType {
+  const typeMap: Record<string, NodeType> = {
+    'WATER_LEVEL_SENSOR': NodeType.WATER_LEVEL_SENSOR,
+    'HEADGATE_CONTROLLER': NodeType.HEADGATE_CONTROLLER,
+    'GATE_VALVE': NodeType.GATE_VALVE,
+    'PUMP_CONTROLLER': NodeType.PUMP_CONTROLLER,
+    'SOIL_MOISTURE_SENSOR': NodeType.SOIL_MOISTURE_SENSOR,
+  };
+  
+  return typeMap[typeStr] || NodeType.UNDEFINED;
+}
+
+interface ParsedData {
+  type: string;
+  [key: string]: any;
+}
+```
+
+---
+
+## Phase 4: UI Components
+
+### 4.1 Serial Connect Component
+
+**File**: `packages/web/src/components/Connect/SerialConnect.tsx`
+
+```typescript
+import React from 'react';
+import { useSerialConnection } from '@/hooks/useSerialConnection';
+import { parseSerialLine } from '@/utils/serialParser';
+import { useNodeStore } from '@/store/nodeStore';
+import { useIrrigationStore } from '@/store/irrigationStore';
+import { Plug, PlugZap } from 'lucide-react';
+
+export function SerialConnect() {
+  const { isConnected, connect, disconnect, write } = useSerialConnection({
+    baudRate: 115200,
+    onData: handleSerialData,
+    onError: (error) => console.error('Serial error:', error),
+  });
+  
+  const updateNode = useNodeStore((state) => state.updateNode);
+  const updateWaterLevel = useIrrigationStore((state) => state.updateWaterLevel);
+  
+  function handleSerialData(line: string) {
+    console.log('Received:', line);
+    
+    const parsed = parseSerialLine(line);
+    if (parsed) {
+      switch (parsed.type) {
+        case 'water_level':
+          updateWaterLevel({
+            nodeId: 0, // TODO: Get from context
+            level: parsed.value,
+            timestamp: parsed.timestamp,
+            alertTriggered: false,
+          });
+          break;
+          
+        case 'battery':
+          updateNode(0, {
+            battery: parsed.percent,
+            lastSeen: Date.now(),
+          });
+          break;
+          
+        // Handle other message types
+      }
+    }
+  }
+  
+  async function handleTest() {
+    try {
+      await write('irrigation status');
+    } catch (error) {
+      console.error('Write error:', error);
+    }
+  }
+  
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h2 className="text-2xl font-bold mb-4">Serial Connection</h2>
+      
+      <div className="space-y-4">
+        {!isConnected ? (
+          <button
+            onClick={connect}
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+          >
+            <Plug className="w-5 h-5" />
+            Connect to Device
+          </button>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 text-green-600">
+              <PlugZap className="w-5 h-5 animate-pulse" />
+              <span className="font-semibold">Connected</span>
+            </div>
+            
+            <button
+              onClick={handleTest}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg"
+            >
+              Test Command
+            </button>
+            
+            <button
+              onClick={disconnect}
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg"
+            >
+              Disconnect
+            </button>
+          </>
+        )}
+      </div>
+      
+      <div className="mt-4 text-sm text-gray-600">
+        <p>Connect via USB using Web Serial API</p>
+        <p className="mt-1">Supported: Chrome, Edge 89+</p>
+      </div>
+    </div>
+  );
+}
+```
+
+### 4.2 Water Level Card
+
+**File**: `packages/web/src/components/Dashboard/WaterLevelCard.tsx`
+
+```typescript
+import React from 'react';
+import { useIrrigationStore } from '@/store/irrigationStore';
+import { Droplet, AlertTriangle } from 'lucide-react';
+
+interface Props {
+  nodeId: number;
+}
+
+export function WaterLevelCard({ nodeId }: Props) {
+  const waterLevel = useIrrigationStore(
+    (state) => state.waterLevels.get(nodeId)
+  );
+  
+  if (!waterLevel) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold mb-4">Water Level</h3>
+        <p className="text-gray-500">No data available</p>
+      </div>
+    );
+  }
+  
+  const percent = (waterLevel.level / 10) * 100; // Assuming 10ft max
+  const isLow = waterLevel.level < 2.0;
+  const isHigh = waterLevel.level > 8.0;
+  
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">Water Level</h3>
+        <Droplet className="w-6 h-6 text-blue-500" />
+      </div>
+      
+      <div className="space-y-4">
+        {/* Large reading */}
+        <div className="text-center">
+          <div className="text-5xl font-bold text-gray-900">
+            {waterLevel.level.toFixed(1)}
+          </div>
+          <div className="text-lg text-gray-600 mt-1">feet</div>
+        </div>
+        
+        {/* Progress bar */}
+        <div className="relative w-full h-8 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className={`h-full transition-all duration-500 ${
+              isHigh ? 'bg-red-500' : isLow ? 'bg-yellow-500' : 'bg-blue-500'
+            }`}
+            style={{ width: `${Math.min(percent, 100)}%` }}
+          />
+        </div>
+        
+        {/* Alerts */}
+        {(isLow || isHigh) && (
+          <div className={`flex items-center gap-2 p-3 rounded-lg ${
+            isHigh ? 'bg-red-50 text-red-800' : 'bg-yellow-50 text-yellow-800'
+          }`}>
+            <AlertTriangle className="w-5 h-5" />
+            <span className="text-sm font-medium">
+              {isHigh ? 'High water level!' : 'Low water level'}
+            </span>
+          </div>
+        )}
+        
+        {/* Timestamp */}
+        <div className="text-xs text-gray-500 text-center">
+          Updated: {new Date(waterLevel.timestamp).toLocaleTimeString()}
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+### 4.3 Dashboard Layout
+
+**File**: `packages/web/src/components/Dashboard/IrrigationDashboard.tsx`
+
+```typescript
+import React from 'react';
+import { useNodeStore } from '@/store/nodeStore';
+import { WaterLevelCard } from './WaterLevelCard';
+import { ValveControlCard } from './ValveControlCard';
+import { PowerStatusCard } from './PowerStatusCard';
+import { NodeType } from '@/types/irrigation';
+
+export function IrrigationDashboard() {
+  const nodes = useNodeStore((state) => Array.from(state.nodes.values()));
+  const waterSensors = nodes.filter((n) => n.type === NodeType.WATER_LEVEL_SENSOR);
+  const valves = nodes.filter((n) => n.type === NodeType.GATE_VALVE);
+  
+  return (
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">
+            GateMesh Irrigation Control
+          </h1>
+          <p className="text-gray-600 mt-2">
+            {nodes.length} nodes connected
+          </p>
+        </div>
+        
+        {/* Grid Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Water Level Cards */}
+          {waterSensors.map((node) => (
+            <WaterLevelCard key={node.nodeId} nodeId={node.nodeId} />
+          ))}
+          
+          {/* Valve Control Cards */}
+          {valves.map((node) => (
+            <ValveControlCard key={node.nodeId} nodeId={node.nodeId} />
+          ))}
+          
+          {/* Power Status */}
+          {nodes.slice(0, 3).map((node) => (
+            <PowerStatusCard key={node.nodeId} nodeId={node.nodeId} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Phase 5: Main App
+
+### 5.1 App Component
+
+**File**: `packages/web/src/App.tsx`
+
+```typescript
+import React, { useState } from 'react';
+import { SerialConnect } from '@/components/Connect/SerialConnect';
+import { IrrigationDashboard } from '@/components/Dashboard/IrrigationDashboard';
+import { useSerialConnection } from '@/hooks/useSerialConnection';
+
+export function App() {
+  const [view, setView] = useState<'connect' | 'dashboard'>('connect');
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+      {/* Header */}
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-xl">G</span>
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">GateMesh</h1>
+            </div>
+            
+            <nav className="flex gap-4">
+              <button
+                onClick={() => setView('connect')}
+                className={`px-4 py-2 rounded-lg ${
+                  view === 'connect'
+                    ? 'bg-green-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Connect
+              </button>
+              <button
+                onClick={() => setView('dashboard')}
+                className={`px-4 py-2 rounded-lg ${
+                  view === 'dashboard'
+                    ? 'bg-green-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Dashboard
+              </button>
+            </nav>
+          </div>
+        </div>
+      </header>
+      
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {view === 'connect' && (
+          <div className="max-w-2xl mx-auto">
+            <SerialConnect />
+          </div>
+        )}
+        
+        {view === 'dashboard' && <IrrigationDashboard />}
+      </main>
+    </div>
+  );
+}
+```
+
+### 5.2 Entry Point
+
+**File**: `packages/web/src/main.tsx`
+
+```typescript
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { App } from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+```
+
+### 5.3 Tailwind CSS
+
+**File**: `packages/web/src/index.css`
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-lg shadow-md p-6;
+  }
+  
+  .btn-primary {
+    @apply bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors;
+  }
+}
+```
+
+**File**: `packages/web/tailwind.config.js`
+
+```javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        background: "hsl(0 0% 100%)",
+        foreground: "hsl(222.2 84% 4.9%)",
+        border: "hsl(214.3 31.8% 91.4%)",
+      },
+    },
+  },
+  plugins: [],
+}
+```
+
+---
+
+## Phase 6: Additional Components
+
+### 6.1 Valve Control Card
+
+**File**: `packages/web/src/components/Dashboard/ValveControlCard.tsx`
+
+```typescript
+import React, { useState } from 'react';
+import { useIrrigationStore } from '@/store/irrigationStore';
+import { useSerialConnection } from '@/hooks/useSerialConnection';
+import { Power, Lock, Unlock } from 'lucide-react';
+
+interface Props {
+  nodeId: number;
+}
+
+export function ValveControlCard({ nodeId }: Props) {
+  const [loading, setLoading] = useState(false);
+  const valveStatus = useIrrigationStore(
+    (state) => state.valveStatuses.get(nodeId)
+  );
+  const { write, isConnected } = useSerialConnection();
+  
+  async function handleOpen() {
+    if (!isConnected) return;
+    
+    setLoading(true);
+    try {
+      await write(`irrigation valve open ${nodeId}`);
+    } catch (error) {
+      console.error('Failed to open valve:', error);
+    } finally {
+      setTimeout(() => setLoading(false), 1000);
+    }
+  }
+  
+  async function handleClose() {
+    if (!isConnected) return;
+    
+    setLoading(true);
+    try {
+      await write(`irrigation valve close ${nodeId}`);
+    } catch (error) {
+      console.error('Failed to close valve:', error);
+    } finally {
+      setTimeout(() => setLoading(false), 1000);
+    }
+  }
+  
+  const isOpen = valveStatus?.state === 'open';
+  const position = valveStatus?.position || 0;
+  
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">Valve #{nodeId}</h3>
+        {isOpen ? (
+          <Unlock className="w-6 h-6 text-green-500" />
+        ) : (
+          <Lock className="w-6 h-6 text-gray-400" />
+        )}
+      </div>
+      
+      {/* Position Display */}
+      <div className="text-center mb-4">
+        <div className="text-4xl font-bold text-gray-900">
+          {position}%
+        </div>
+        <div className="text-sm text-gray-600 mt-1">
+          {valveStatus?.isMoving ? 'Moving...' : valveStatus?.state || 'Unknown'}
+        </div>
+      </div>
+      
+      {/* Position Bar */}
+      <div className="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden mb-4">
+        <div
+          className="h-full bg-green-500 transition-all duration-300"
+          style={{ width: `${position}%` }}
+        />
+      </div>
+      
+      {/* Controls */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={handleOpen}
+          disabled={loading || !isConnected || isOpen}
+          className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Open
+        </button>
+        <button
+          onClick={handleClose}
+          disabled={loading || !isConnected || !isOpen}
+          className="btn-danger disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Close
+        </button>
+      </div>
+      
+      {/* Stats */}
+      {valveStatus && (
+        <div className="mt-4 pt-4 border-t text-sm text-gray-600">
+          <div className="flex justify-between">
+            <span>Cycles:</span>
+            <span className="font-semibold">{valveStatus.cycleCount}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### 6.2 Power Status Card
+
+**File**: `packages/web/src/components/Dashboard/PowerStatusCard.tsx`
+
+```typescript
+import React from 'react';
+import { useNodeStore } from '@/store/nodeStore';
+import { Battery, Sun, Zap } from 'lucide-react';
+
+interface Props {
+  nodeId: number;
+}
+
+export function PowerStatusCard({ nodeId }: Props) {
+  const node = useNodeStore((state) => state.getNode(nodeId));
+  
+  if (!node) return null;
+  
+  const isCharging = node.solar > node.battery;
+  const batteryLevel = node.battery;
+  
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h3 className="text-lg font-semibold mb-4">Power Status</h3>
+      
+      <div className="space-y-4">
+        {/* Battery */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Battery className="w-5 h-5 text-gray-600" />
+              <span className="text-sm font-medium">Battery</span>
+            </div>
+            <span className="text-lg font-bold">{batteryLevel}%</span>
+          </div>
+          <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all ${
+                batteryLevel > 60
+                  ? 'bg-green-500'
+                  : batteryLevel > 30
+                  ? 'bg-yellow-500'
+                  : 'bg-red-500'
+              }`}
+              style={{ width: `${batteryLevel}%` }}
+            />
+          </div>
+        </div>
+        
+        {/* Solar */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Sun className="w-5 h-5 text-yellow-500" />
+              <span className="text-sm font-medium">Solar</span>
+            </div>
+            <span className="text-sm font-semibold">{node.solar}V</span>
+          </div>
+        </div>
+        
+        {/* Charging Status */}
+        {isCharging && (
+          <div className="flex items-center gap-2 text-green-600 bg-green-50 p-2 rounded">
+            <Zap className="w-4 h-4" />
+            <span className="text-sm font-medium">Charging</span>
+          </div>
+        )}
+        
+        {/* Signal Strength */}
+        <div className="pt-3 border-t">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Signal</span>
+            <span className="text-sm font-semibold">
+              {node.rssi} dBm
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Phase 7: HTML Template
+
+**File**: `packages/web/index.html`
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/gatemesh-icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="GateMesh Irrigation Control System - Web Client" />
+    <title>GateMesh Control</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+---
+
+## Phase 8: Build & Run
+
+### 8.1 Installation
+
+```bash
+# From project root
+cd gatemesh-web
+
+# Install dependencies
+pnpm install
+
+# Run development server
+pnpm dev
+
+# Build for production
+pnpm build
+```
+
+### 8.2 Expected Output
+
+```
+VITE v5.0.0  ready in 234 ms
+
+➜  Local:   http://localhost:3000/
+➜  Network: use --host to expose
+➜  press h to show help
+```
+
+### 8.3 Testing Connection
+
+1. Open http://localhost:3000
+2. Click "Connect to Device"
+3. Select your GateMesh device from serial ports
+4. Device should show connection status
+5. Click "Test Command" to send `irrigation status`
+6. Watch console for serial data
+
+---
+
+## Phase 9: Deployment Options
+
+### 9.1 Self-Hosted
+
+```bash
+# Build
+pnpm build
+
+# Serve with any static server
+npx serve -s packages/web/dist -p 8080
+```
+
+### 9.2 Device-Hosted (ESP32)
+
+```bash
+# Build minimal version
+pnpm build
+
+# Convert to LittleFS binary
+# (requires ESP32 tools)
+cd packages/web/dist
+mklittlefs -c . -s 0x100000 littlefswebui.bin
+
+# Flash to ESP32
+esptool.py write_flash 0x300000 littlefswebui.bin
+```
+
+### 9.3 Docker Container
+
+**File**: `Dockerfile`
+
+```dockerfile
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages ./packages
+
+RUN npm install -g pnpm
+RUN pnpm install
+RUN pnpm build
+
+FROM nginx:alpine
+COPY --from=builder /app/packages/web/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+```bash
+# Build and run
+docker build -t gatemesh-web .
+docker run -d -p 8080:80 gatemesh-web
+```
+
+---
+
+## Phase 10: Next Steps
+
+### Priority Features to Add
+
+1. **Node Configuration UI**
+   - Role selector dropdown
+   - Zone assignment
+   - Location naming
+   - Calibration wizards
+
+2. **Real-Time Graphing**
+   - Water level trends (recharts)
+   - Battery voltage history
+   - Irrigation schedule timeline
+
+3. **Zone Management**
+   - Zone creation/editing
+   - Multi-valve coordination
+   - Schedule builder
+
+4. **Alert System**
+   - Toast notifications
+   - Alert history
+   - Email/SMS integration
+
+5. **Network Topology**
+   - Visual node map
+   - Signal strength indicators
+   - Parent-child relationships
+
+### Testing Checklist
+
+- [ ] Serial connection establishes
+- [ ] Commands send successfully
+- [ ] Data parses correctly
+- [ ] UI updates in real-time
+- [ ] Multiple nodes tracked
+- [ ] Disconnection handled gracefully
+- [ ] Responsive on mobile
+- [ ] Works in Chrome/Edge
+
+---
+
+## Quick Start Commands
+
+```bash
+# Clone and setup
+git clone <your-repo>
+cd gatemesh-web
+pnpm install
+
+# Development
+pnpm dev              # Start dev server
+pnpm lint             # Check code quality
+pnpm build            # Production build
+
+# Testing
+pnpm test             # Run tests (when added)
+```
+
+---
+
+## Browser Compatibility
+
+| Feature | Chrome | Edge | Firefox | Safari |
+|---------|--------|------|---------|--------|
+| Web Serial | ✅ 89+ | ✅ 89+ | ❌ | ❌ |
+| Web Bluetooth | ✅ 56+ | ✅ 79+ | ❌ | ❌ |
+| React | ✅ | ✅ | ✅ | ✅ |
+
+**Recommendation**: Use Chrome or Edge for full functionality.
+
+---
+
+## Summary
+
+This first draft provides:
+
+✅ **Connection**: Web Serial API integration  
+✅ **State Management**: Zustand stores for nodes and irrigation data  
+✅ **UI Components**: Dashboard, water level, valve control cards  
+✅ **Type Safety**: Full TypeScript implementation  
+✅ **Modern Stack**: React 18, Vite, Tailwind CSS  
+✅ **Extensible**: Monorepo structure for future additions  
+
+**Next session**: Add node configuration UI, real-time graphing, and zone management features.
